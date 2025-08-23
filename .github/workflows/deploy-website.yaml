@@ -5,7 +5,7 @@ on:
     paths:
       - "site/**"
     branches:
-      - main
+      - prod
 
 jobs:
   install:
