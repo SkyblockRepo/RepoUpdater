@@ -43,3 +43,4 @@ runs:
         echo "ls -a ."
         ls -a .
         cp .env.example .env
+        echo "PUBLIC_COMMIT_HASH=${{ github.sha }}" >> .env

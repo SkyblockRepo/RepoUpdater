@@ -1,7 +1,6 @@
-import { prerender } from '$app/server';
 import { getDoc } from '$lib/utils';
 
-export const getAllDocRoutes = prerender(async () => {
+export const getAllDocRoutes = async () => {
 	const modules = import.meta.glob('/src/docs/**/*.md');
 	const entries = [];
 
@@ -11,9 +10,9 @@ export const getAllDocRoutes = prerender(async () => {
 	}
 
 	return entries;
-});
+};
 
-export const getDocsSidebar = prerender(async () => {
+export const getDocsSidebar = async () => {
 	const entries = await getAllDocRoutes();
 	const navGroups = {} as Record<
 		string,
@@ -39,4 +38,4 @@ export const getDocsSidebar = prerender(async () => {
 			return a.title.localeCompare(b.title);
 		})
 	}));
-});
+};

@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-node';
+import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { mdsx } from 'mdsx';
 import { mdsxConfig } from './mdsx.config.js';
@@ -14,10 +14,9 @@ const config = {
 	},
 
 	kit: {
-		adapter: adapter(),
-		experimental: {
-			remoteFunctions: true
-		},
+		adapter: adapter({
+			fallback: '404.html'
+		}),
 		alias: {
 			$ui: './src/lib/components/ui',
 			$comp: './src/lib/components',

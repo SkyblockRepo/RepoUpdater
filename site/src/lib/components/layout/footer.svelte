@@ -10,7 +10,7 @@
 					href="https://github.com/EliteFarmers/Website/commit/{PUBLIC_COMMIT_HASH}"
 					target="_blank"
 					class="rounded-sm border bg-card p-0.5 text-muted-foreground hover:underline"
-					>{PUBLIC_COMMIT_HASH}</a
+					>{PUBLIC_COMMIT_HASH.slice(0, 7)}</a
 				>
 			</p>
 		{/if}

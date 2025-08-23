@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
-	import { getDocsSidebar } from '$lib/remote/docs.remote';
+	import { getDocsSidebar } from '$lib/docs';
 	import { ScrollArea } from '$ui/scroll-area';
 	import type { Snippet } from 'svelte';
 	import NavMain from './nav-main.svelte';
