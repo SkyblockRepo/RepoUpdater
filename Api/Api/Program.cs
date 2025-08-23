@@ -1,11 +1,17 @@
 global using FastEndpoints;
 global using FluentValidation;
+using Api.Data;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Net.Http.Headers;
 
 var bld = WebApplication.CreateBuilder();
-bld.Services.AddFastEndpoints();
+var services = bld.Services;
+
+services.AddFastEndpoints();
+
+services.AddDatabaseConfiguration();
+services.AddCacheConfiguration();
 
 var app = bld.Build();
 
