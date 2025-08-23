@@ -6,6 +6,13 @@ import { mdsxConfig } from './mdsx.config.js';
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	preprocess: [mdsx(mdsxConfig), vitePreprocess()],
+
+	compilerOptions: {
+		experimental: {
+			async: true
+		}
+	},
+
 	kit: {
 		adapter: adapter(),
 		experimental: {
@@ -19,7 +26,9 @@ const config = {
 			'$docs/*': '.velite/*'
 		}
 	},
+
 	extensions: ['.svelte', '.md'],
+
 	env: {
 		publicPrefix: 'PUBLIC_'
 	}

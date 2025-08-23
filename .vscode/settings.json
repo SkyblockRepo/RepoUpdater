@@ -1,53 +1,60 @@
 {
-	"editor.tabSize": 4,
-	"[svelte]": {
-		"editor.tabSize": 2
-	},
-	"editor.detectIndentation": false,
-	"eslint.validate": ["javascript", "javascriptreact", "typescript", "svelte"],
-	"editor.defaultFormatter": "esbenp.prettier-vscode",
-	"editor.formatOnSave": true,
-	"editor.codeActionsOnSave": {
-		"source.fixAll.eslint": "always",
-		"source.organizeImports": "explicit"
-	},
-	"files.associations": {
-		"*.css": "tailwindcss",
-		".env*": "properties"
-	},
-	"workbench.editor.customLabels.patterns": {
-		// Page
-		"**/routes/**/*/+page.svelte": "${dirname} - Page",
-		"**/routes/+page.svelte": "(root) - Page",
-		// Layout
-		"**/routes/**/*/+layout.svelte": "${dirname} - Layout",
-		"**/routes/+layout.svelte": "(root) - Layout",
-		// Page Data
-		"**/routes/**/*/+page.[tj]s": "${dirname} - Page Data",
-		"**/routes/+page.[tj]s": "(root) - Page Data",
-		// Layout Data
-		"**/routes/**/*/+layout.[tj]s": "${dirname} - Layout Data",
-		"**/routes/+layout.[tj]s": "(root) - Layout Data",
-		// Page Server Data
-		"**/routes/**/*/+page.server.[tj]s": "${dirname} - Page Server Data",
-		"**/routes/+page.server.[tj]s": "(root) - Page Server Data",
-		// Page Layout Data
-		"**/routes/**/*/+layout.server.[tj]s": "${dirname} - Layout Server Data",
-		"**/routes/+layout.server.[tj]s": "(root) - Layout Server Data",
-		// Error Page
-		"**/routes/**/*/+error.svelte": "${dirname} - Error Page",
-		"**/routes/+error.svelte": "(root) - Error Page",
-		// Server Endpoint
-		"**/routes/**/*/+server.[tj]s": "${dirname} - Server Endpoint"
-	},
-	"svelte.enable-ts-plugin": true,
-	"svelte.plugin.svelte.defaultScriptLanguage": "ts",
-	"tailwindCSS.classAttributes": ["class", "className", "ngClass", "class:list", ".*Class*"],
-	"tailwindCSS.includeLanguages": {
-		"html": "html",
-		"plaintext": "html",
-		"javascript": "javascript",
-		"typescript": "typescript",
-		"svelte": "html"
-	}
+  "editor.tabSize": 4,
+  "[svelte]": {
+    "editor.tabSize": 2
+  },
+  "editor.detectIndentation": false,
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "svelte"],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always",
+    "source.organizeImports": "explicit"
+  },
+  "files.associations": {
+    "*.css": "tailwindcss",
+    "*.pcss": "tailwindcss",
+    ".env*": "properties"
+  },
+  "workbench.editor.customLabels.patterns": {
+    // Page
+    "**/routes/**/*/+page.svelte": "${dirname} - Page",
+    "**/routes/+page.svelte": "(root) - Page",
+    // Layout
+    "**/routes/**/*/+layout.svelte": "${dirname} - Layout",
+    "**/routes/+layout.svelte": "(root) - Layout",
+    // Page Data
+    "**/routes/**/*/+page.[tj]s": "${dirname} - Page Data",
+    "**/routes/+page.[tj]s": "(root) - Page Data",
+    // Layout Data
+    "**/routes/**/*/+layout.[tj]s": "${dirname} - Layout Data",
+    "**/routes/+layout.[tj]s": "(root) - Layout Data",
+    // Page Server Data
+    "**/routes/**/*/+page.server.[tj]s": "${dirname} - Page Server Data",
+    "**/routes/+page.server.[tj]s": "(root) - Page Server Data",
+    // Page Layout Data
+    "**/routes/**/*/+layout.server.[tj]s": "${dirname} - Layout Server Data",
+    "**/routes/+layout.server.[tj]s": "(root) - Layout Server Data",
+    // Error Page
+    "**/routes/**/*/+error.svelte": "${dirname} - Error Page",
+    "**/routes/+error.svelte": "(root) - Error Page",
+    // Server Endpoint
+    "**/routes/**/*/+server.[tj]s": "${dirname} - Server Endpoint"
+  },
+  "svelte.enable-ts-plugin": true,
+  "svelte.plugin.svelte.defaultScriptLanguage": "ts",
+  "tailwindCSS.classAttributes": [
+    "class",
+    "className",
+    "ngClass",
+    "class:list",
+    ".*Class*"
+  ],
+  "tailwindCSS.includeLanguages": {
+    "html": "html",
+    "plaintext": "html",
+    "javascript": "javascript",
+    "typescript": "typescript",
+    "svelte": "html"
+  }
 }

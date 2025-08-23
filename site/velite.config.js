@@ -6,6 +6,8 @@ const docSchema = s
 		title: s.string(),
 		description: s.string(),
 		path: s.path(),
+		category: s.string(),
+		order: s.number().optional(),
 		tags: s.array(s.string()).default([]),
 		author: s.string().default(''),
 		date: s.string().default(''),

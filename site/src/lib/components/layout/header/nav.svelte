@@ -7,8 +7,7 @@
 >
 	<div class="flex flex-row gap-4">
 		<a href="/" class="text-muted-foreground">Home</a>
-		<a href="/about" class="text-muted-foreground">About</a>
-		<a href="/contact" class="text-muted-foreground">Contact</a>
+		<a href="/docs" class="text-muted-foreground">Docs</a>
 	</div>
 	<ModeToggle />
 </nav>

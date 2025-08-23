@@ -34,16 +34,18 @@
 	<meta name="twitter:site" content={siteConfig.current.url} />
 	<meta name="twitter:title" content={title} />
 	<meta name="twitter:description" content={description} />
-	<meta name="twitter:image" content={ogImage?.url} />
 	<meta name="twitter:image:alt" content={title} />
 	<meta name="twitter:creator" content={author} />
+	{#if ogImage}
+		<meta name="twitter:image" content={ogImage?.url} />
+		<meta property="og:image" content={ogImage?.url} />
+		<meta property="og:image:width" content={ogImage?.width} />
+		<meta property="og:image:height" content={ogImage?.height} />
+	{/if}
 	<meta property="og:title" content={title} />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={siteConfig.current.url + page.url.pathname} />
-	<meta property="og:image" content={ogImage?.url} />
 	<meta property="og:image:alt" content={title} />
-	<meta property="og:image:width" content={ogImage?.width} />
-	<meta property="og:image:height" content={ogImage?.height} />
 	<meta property="og:description" content={description} />
 	<meta property="og:site_name" content={siteConfig.current.name} />
 	<meta property="og:locale" content="EN_US" />

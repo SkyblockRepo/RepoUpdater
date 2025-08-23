@@ -1,14 +1,17 @@
 <script lang="ts">
-	import Footer from '$comp/layout/footer.svelte';
-	import Header from '$comp/layout/header/header.svelte';
-	import ThemeWatcher from '$comp/misc/theme-watcher.svelte';
 	import favicon from '$lib/assets/favicon.svg';
+	import { siteConfig } from '$lib/config';
+	import { initPageContext } from '$lib/hooks/page.svelte';
+	import { useSiteConfig } from '$lib/hooks/use-site-config.svelte';
 	import { initThemeContext } from '$lib/stores/themes.svelte';
 	import '../app.css';
 
 	let { children } = $props();
 
 	initThemeContext();
+	initPageContext();
+
+	useSiteConfig(() => siteConfig);
 </script>
 
 <svelte:head>
@@ -16,15 +19,7 @@
 </svelte:head>
 
 <svelte:boundary>
-	<Header />
-
-	<div class="min-h-80vh @container h-full">
-		{@render children?.()}
-	</div>
-
-	<Footer />
-
-	<ThemeWatcher />
+	{@render children?.()}
 
 	{#snippet pending()}
 		<!-- Intentionally left blank -->

@@ -2,6 +2,7 @@
 title: Blog Example
 date: 2025-08-21
 author: Kaeso
+category: main
 description: Example doc page.
 tags:
   - announcement
@@ -17,8 +18,15 @@ Test
 Use markdown to format your text. You can use **bold**, _italic_, and `code` formatting.
 Also \`\`\`code blocks\`\`\` are supported. You can put a `\` to escape special characters.
 
-```cs
+```ts
 // Code blocks can be used for longer code snippets.
+export const siteConfig = defineSiteConfig({
+	name: 'Skyblock Repo',
+	url: 'https://skyblockrepo.com',
+	description: 'Skyblock Repo is a comprehensive resource for Skyblock developers!',
+	author: 'Skyblock Repo',
+	keywords: ['skyblock', 'skyblockrepo', 'repository', 'development', 'hypixel']
+});
 ```
 
 ## Lists

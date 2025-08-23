@@ -1,8 +1,9 @@
 <script lang="ts">
+	import type { TableOfContents, TableOfContentsItem } from '$lib/index.js';
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { writable } from 'svelte/store';
 	import Tree from './toc-tree.svelte';
-	import type { TableOfContents, TableOfContentsItem } from '$lib/index.js';
 
 	let filteredHeadingsList = $state<TableOfContents>();
 
@@ -17,7 +18,7 @@
 		const hierarchy: TableOfContents = { items: [] };
 		let currentLevel: TableOfContentsItem | undefined = undefined;
 
-		const newIdSet: Set<string> = new Set();
+		const newIdSet: Set<string> = new SvelteSet();
 		let count = 1;
 		for (const heading of headings) {
 			const level = Number.parseInt(heading.tagName.charAt(1));

@@ -1,7 +1,8 @@
-import { docs } from '$docs/index.js';
+import { docs, type Doc } from '$docs/index.js';
 import type { DocResolver } from '$lib/index.js';
 import { error } from '@sveltejs/kit';
 import { clsx, type ClassValue } from 'clsx';
+import type { Component } from 'svelte';
 import type {
 	HTMLAnchorAttributes,
 	HTMLAttributes,
@@ -29,7 +30,13 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-export async function getDoc(slug: string) {
+export type DocData = {
+	metadata: Doc;
+	title: string;
+	component: Component;
+};
+
+export async function getDoc(slug: string): Promise<DocData> {
 	const modules = import.meta.glob(`/src/docs/**/*.md`);
 	const match = findMatch(slug, modules);
 	const doc = await match?.resolver?.();

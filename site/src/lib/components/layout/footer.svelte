@@ -2,7 +2,7 @@
 	import { PUBLIC_COMMIT_HASH } from '$env/static/public';
 </script>
 
-<footer>
+<footer class="border-t border-border/50 bg-background/50 py-8 backdrop-blur-sm">
 	<div class="flex w-full flex-wrap items-start justify-center gap-4 px-4 md:gap-8 md:px-8">
 		{#if PUBLIC_COMMIT_HASH !== ''}
 			<p class="flex-1 text-xs text-muted-foreground/50">
