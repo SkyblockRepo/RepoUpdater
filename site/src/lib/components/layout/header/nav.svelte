@@ -11,7 +11,7 @@
 		<a href="/" class="text-muted-foreground">Home</a>
 		<a href="/docs" class="text-muted-foreground">Docs</a>
 	</div>
-  <div class="flex flex-row items-center gap-1">
+	<div class="flex flex-row items-center gap-1">
 		<Button href="https://github.com/SkyblockRepo/Repo" variant="ghost">
 			<SiGithub />
 		</Button>

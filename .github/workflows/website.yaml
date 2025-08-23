@@ -8,6 +8,29 @@ on:
       - main
 
 jobs:
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Tools & Cache
+        uses: ./.github/actions/setup
+
+      # Cache the installed node_modules directory
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: node_modules_cache_id
+        with:
+          path: site/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('site/pnpm-lock.yaml') }}
+
+      # If the cache didn't exist, run pnpm install
+      - name: Install dependencies
+        if: steps.node_modules_cache_id.outputs.cache-hit != 'true'
+        working-directory: ./site
+        run: pnpm install
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -18,7 +41,14 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: Restore node_modules from cache
+        uses: actions/cache@v4
+        with:
+          path: site/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('site/pnpm-lock.yaml') }}
+
       - name: Lint
+        working-directory: ./site
         run: pnpm run lint
   check:
     name: Svelte Check
@@ -30,7 +60,14 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: Restore node_modules from cache
+        uses: actions/cache@v4
+        with:
+          path: site/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('site/pnpm-lock.yaml') }}
+
       - name: Check
+        working-directory: ./site
         run: pnpm run check
   build:
     name: Build
@@ -42,5 +79,12 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: Restore node_modules from cache
+        uses: actions/cache@v4
+        with:
+          path: site/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('site/pnpm-lock.yaml') }}
+
       - name: Build
+        working-directory: ./site
         run: pnpm run build
