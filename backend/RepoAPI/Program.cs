@@ -1,6 +1,9 @@
 using RepoAPI.Data;
 using RepoAPI.Util;
 using HypixelAPI;
+using Quartz;
+using Refit;
+using RepoAPI.Features.Wiki.Services;
 
 var builder = WebApplication.CreateBuilder();
 var services = builder.Services;
@@ -13,7 +16,25 @@ services.AddSwaggerDocument();
 
 services.AddDatabaseConfiguration();
 services.RegisterServicesFromRepoAPI();
+
+
+services.AddRefitClient<IWikiApi>()
+	.ConfigureHttpClient(c =>
+	{
+		c.BaseAddress = new Uri("https://wiki.hypixel.net/");
+		c.DefaultRequestHeaders.Add("User-Agent", "RepoAPI");
+	});
 services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, "RepoAPI");
+
+services.AddQuartz(q =>
+{
+	q.UseInMemoryStore();
+	q.AddSelfConfiguringJobs(builder.Configuration);
+});
+
+services.AddQuartzHostedService(options => {
+	options.WaitForJobsToComplete = true;
+});
 
 builder.AddCacheConfiguration();
 

@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+﻿using HypixelAPI.DTOs;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -15,19 +15,14 @@ namespace RepoAPI.Data.Migrations
                 name: "SkyblockItems",
                 columns: table => new
                 {
-                    InternalId = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Id = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true)
+                    ItemId = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
+                    NpcSellPrice = table.Column<double>(type: "double precision", nullable: false),
+                    Data = table.Column<ItemResponse>(type: "jsonb", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_SkyblockItems", x => x.InternalId);
+                    table.PrimaryKey("PK_SkyblockItems", x => x.ItemId);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_SkyblockItems_Id",
-                table: "SkyblockItems",
-                column: "Id");
         }
 
         /// <inheritdoc />

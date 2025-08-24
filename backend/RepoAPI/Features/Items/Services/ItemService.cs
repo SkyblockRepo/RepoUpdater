@@ -13,7 +13,7 @@ public class ItemService(DataContext context, HybridCache cache)
 			$"item-id-{id}",
 			async c =>
 			{
-				return await context.SkyblockItems.FirstOrDefaultAsync(s => s.Id == id, c);
+				return await context.SkyblockItems.FirstOrDefaultAsync(s => s.ItemId == id, c);
 			},
 			options: new HybridCacheEntryOptions
 			{
@@ -21,6 +21,4 @@ public class ItemService(DataContext context, HybridCache cache)
 				LocalCacheExpiration = TimeSpan.FromMinutes(2)
 			}, 
 			cancellationToken: ct);
-	
-	
 }
