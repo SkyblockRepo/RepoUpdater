@@ -11,6 +11,7 @@ public static class DependencyInjection
 {
 	public static IServiceCollection AddHypixelApi(this IServiceCollection services, string hypixelApiKey, string? userAgent = null) {
 		services.AddSingleton<IHypixelKeyUsageCounter, HypixelKeyUsageCounter>();
+		services.AddSingleton<IHypixelRequestsCounter, HypixelRequestsCounter>();
 		services.AddSingleton<IHypixelRequestLimiter, HypixelRequestLimiter>();
 		services.AddScoped<HypixelRateLimitHandler>();
 		
