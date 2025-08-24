@@ -1,4 +1,5 @@
 using RepoAPI.Data;
+using RepoAPI.Util;
 
 var builder = WebApplication.CreateBuilder();
 var services = builder.Services;
@@ -27,6 +28,11 @@ app.UseFastEndpoints(c =>
 	c.Versioning.DefaultVersion = 1;
 	c.Versioning.PrependToRoute = true;
 });
+
+if (!app.Environment.IsTesting()) {
+	await app.MigrateDatabase();
+}
+
 app.Run();
 
 internal sealed class PingEndpoint : EndpointWithoutRequest

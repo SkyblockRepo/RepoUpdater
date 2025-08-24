@@ -1,10 +1,11 @@
 using RepoAPI.Features.Items.Models;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using RepoAPI.Util;
 
 namespace RepoAPI.Data;
 
-public class DataContext(DbContextOptions<DataContext> options, IConfiguration config): DbContext(options)
+public class DataContext(DbContextOptions<DataContext> options, IConfiguration config, IWebHostEnvironment environment): DbContext(options)
 {
 	private static NpgsqlDataSource? Source { get; set; }
     
@@ -23,7 +24,9 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
             Source = builder.Build();
         }
         
-        optionsBuilder.EnableSensitiveDataLogging(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development");
+        if (environment.IsTesting()) return;
+        
+        optionsBuilder.EnableSensitiveDataLogging(environment.IsDevelopment());
         optionsBuilder.UseNpgsql(Source, opt => {
             opt.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
         });

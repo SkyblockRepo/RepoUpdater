@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Hybrid;
+using RepoAPI.Util;
 using StackExchange.Redis;
 
 namespace RepoAPI.Data;
@@ -16,7 +17,7 @@ public static class CacheConfiguration
 			};
 		});
 		
-		if (builder.Environment.IsEnvironment("Testing"))
+		if (builder.Environment.IsTesting())
 		{
 			return builder;
 		}

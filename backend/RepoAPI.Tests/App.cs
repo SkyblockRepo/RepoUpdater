@@ -1,4 +1,6 @@
+using System.Data.Common;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +10,8 @@ namespace RepoAPI.Tests;
 
 public class App : AppFixture<Program>
 {
+	private DbConnection? _connection;
+	
 	protected override void ConfigureApp(IWebHostBuilder a)
 	{
 		a.UseEnvironment("Testing");
@@ -29,14 +33,15 @@ public class App : AppFixture<Program>
 		{
 			s.Remove(dbContextDescriptor);
 		}
-		var dataContextImpl = s.SingleOrDefault(d => d.ServiceType == typeof(DataContext));
-		if (dataContextImpl != null)
-		{
-			s.Remove(dataContextImpl);
-		}
+
+		// Create an open SQLite connection
+		_connection = new SqliteConnection("DataSource=:memory:");
+		_connection.Open();
+
+		// Add the DbContext with the SQLite provider
 		s.AddDbContext<DataContext>(options =>
 		{
-			options.UseInMemoryDatabase(Guid.NewGuid().ToString());
+			options.UseSqlite(_connection);
 		});
 		
 		s.AddMemoryCache();

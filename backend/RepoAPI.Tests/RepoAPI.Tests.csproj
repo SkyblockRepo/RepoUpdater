@@ -6,11 +6,12 @@
         <Nullable>enable</Nullable>
         <IsTestProject>true</IsTestProject>
         <OutputType>Exe</OutputType>
+        <VSTestSetting>test.runsettings</VSTestSetting>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="FastEndpoints.Testing" Version="7.0.1" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.8" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.8" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1"/>
         <PackageReference Include="Shouldly" Version="4.3.0" />
