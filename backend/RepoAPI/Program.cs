@@ -1,5 +1,6 @@
 using RepoAPI.Data;
 using RepoAPI.Util;
+using HypixelAPI;
 
 var builder = WebApplication.CreateBuilder();
 var services = builder.Services;
@@ -12,6 +13,7 @@ services.AddSwaggerDocument();
 
 services.AddDatabaseConfiguration();
 services.RegisterServicesFromRepoAPI();
+services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, "RepoAPI");
 
 builder.AddCacheConfiguration();
 
