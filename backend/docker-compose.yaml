@@ -13,8 +13,10 @@
     networks:
       - skyblockrepo-network
   database:
-    image: postgres:17-alpine
+    image: postgres:18beta3-alpine
     restart: unless-stopped
+    env_file:
+      - .env
     command: -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
     ports:
       - '${POSTGRES_PORT:?POSTGRES_PORT env variable is required}:5432'
@@ -25,7 +27,7 @@
     networks:
       - skyblockrepo-network
   cache:
-    image: redis:7.4.1
+    image: redis:8-alpine
     restart: always
     command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD env variable is required}
     ports:
@@ -36,3 +38,11 @@
       - redis-data:/data
     networks:
       - skyblockrepo-network
+  
+volumes:
+    db-data: {}
+    redis-data: {}
+  
+networks:
+    skyblockrepo-network:
+        driver: bridge

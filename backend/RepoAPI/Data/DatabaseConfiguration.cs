@@ -1,4 +1,4 @@
-namespace Api.Data;
+namespace RepoAPI.Data;
 
 public static class DatabaseConfiguration
 {

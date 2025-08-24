@@ -1,7 +1,8 @@
+using RepoAPI.Features.Items.Models;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace Api.Data;
+namespace RepoAPI.Data;
 
 public class DataContext(DbContextOptions<DataContext> options, IConfiguration config): DbContext(options)
 {
@@ -13,9 +14,7 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
         var connection = config.GetConnectionString("Postgres");
 
         if (string.IsNullOrEmpty(connection)) {
-            Console.WriteLine("No connection string found. Quitting...");
-            Environment.Exit(1);
-            return;
+            throw new InvalidOperationException("No database connection string found.");
         }
         
         if (Source is null) {
@@ -36,4 +35,6 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
         // This automatically applies all IEntityTypeConfiguration implementations in the assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DataContext).Assembly);
     }
+    
+    public DbSet<SkyblockItem> SkyblockItems => Set<SkyblockItem>();
 }

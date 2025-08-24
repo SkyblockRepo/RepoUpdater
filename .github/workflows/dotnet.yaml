@@ -1,0 +1,42 @@
+name: .NET Build
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        working-directory: backend
+        run: dotnet restore RepoAPI
+
+      - name: Build
+        working-directory: backend
+        run: dotnet build --no-restore RepoAPI
+
+      - name: Modify xUnit Runner Config
+        working-directory: backend
+        run: |
+          echo '{
+              "parallelizeAssembly": false,
+              "parallelizeTestCollections": false,
+              "diagnosticMessages": false
+          }' > RepoAPI.Tests/xunit.runner.json
+
+      - name: Test
+        working-directory: backend
+        env:
+          ASPNETCORE_ENVIRONMENT: Testing
+        run: dotnet test SkyblockRepo.sln --configuration Release --verbosity minimal --filter "ExcludeInCiCd!=Yes"
