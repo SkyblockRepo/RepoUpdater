@@ -1,6 +1,8 @@
+using System.Text.Json;
 using RepoAPI.Data;
 using RepoAPI.Util;
 using HypixelAPI;
+using Microsoft.AspNetCore.Http.Json;
 using Quartz;
 using Refit;
 using RepoAPI.Features.Wiki.Services;
@@ -16,7 +18,11 @@ services.AddSwaggerDocument();
 
 services.AddDatabaseConfiguration();
 services.RegisterServicesFromRepoAPI();
-
+services.Configure<JsonOptions>(o =>
+{
+	o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+	o.SerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+});
 
 services.AddRefitClient<IWikiApi>()
 	.ConfigureHttpClient(c =>
@@ -46,6 +52,9 @@ app.UseStaticFiles();
 app.UseFastEndpoints(c =>
 {
 	c.Binding.ReflectionCache.AddFromRepoAPI();
+	
+	c.Serializer.Options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+	c.Serializer.Options.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
 
 	c.Versioning.Prefix = "v";
 	c.Versioning.DefaultVersion = 1;

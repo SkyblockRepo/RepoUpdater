@@ -39,6 +39,9 @@ public class ItemTemplateDto
 
 	/// <summary>Displays the item's second lore template.</summary>
 	public string? Lore2 { get; set; }
+	
+	/// <summary>Displays the item's real lore.</summary>
+	public string? RealLore { get; set; }
 
 	/// <summary>Displays the item's category.</summary>
 	public string? Category { get; set; }
@@ -105,6 +108,9 @@ public class ItemTemplateDto
 
 	/// <summary>Displays the item's Salvage data.</summary>
 	public string? Salvageable { get; set; }
+	
+	/// <summary>Displays the item's Sackable data.</summary>
+	public string? Sackable { get; set; }
 
 	/// <summary>Displays whether the item is Soulbound. (Yes or No)</summary>
 	public string? Soulboundable { get; set; }
@@ -159,4 +165,7 @@ public class ItemTemplateDto
 
 	/// <summary>Displays the sources this item is obtained from.</summary>
 	public string? Sources { get; set; }
+	
+	[JsonExtensionData]
+	public Dictionary<string, object> AdditionalProperties { get; set; } = new();
 }

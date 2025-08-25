@@ -5,25 +5,31 @@ namespace RepoAPI.Features.Wiki.Templates.ItemTemplate;
 [RegisterService<ITemplateParser<ItemTemplateDto>>(LifeTime.Singleton)]
 public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
 {
-    // A single regex to capture all key-value pairs.
-    // It finds a pipe |, captures the key, skips the =, and captures the value
-    // until the next pipe | or the closing }}
-    [GeneratedRegex(
-        @"\|([^=]+?)\s*=\s*(.*?)(?=\s*\||\s*}})",
-        RegexOptions.Singleline | RegexOptions.Compiled)]
-    private static partial Regex ItemPropertyRegex();
+    // Regex to match property names in the format |property_name=
+    [GeneratedRegex(@"\|([^=]+?)\s*=", RegexOptions.Compiled)]
+    private static partial Regex PropertyNameRegex();
 
     public ItemTemplateDto Parse(string wikitext)
     {
         var dto = new ItemTemplateDto();
-        var matches = ItemPropertyRegex().Matches(wikitext);
 
-        foreach (Match match in matches)
+        var bodyStartIndex = wikitext.IndexOf('|');
+        var bodyEndIndex = wikitext.LastIndexOf("}}", StringComparison.Ordinal);
+
+        if (bodyStartIndex == -1 || bodyEndIndex == -1)
         {
-            // Key is group 1, Value is group 2
-            var key = match.Groups[1].Value.Trim();
-            var value = match.Groups[2].Value.Trim();
-            
+            return dto; // Not a valid template
+        }
+
+        var templateBody = wikitext.Substring(bodyStartIndex + 1, bodyEndIndex - (bodyStartIndex + 1));
+        
+        // Parse the key-value pairs using a brace-counting method.
+        var properties = GetTopLevelProperties(templateBody);
+
+        foreach (var prop in properties)
+        {
+            var key = prop.Key.Trim().ToLowerInvariant();
+            var value = prop.Value.Replace("\\r", "\r").Replace("\\n", "\n").Trim();
             // Map the found key to the correct DTO property
             switch (key)
             {
@@ -38,6 +44,7 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
                 case "itemlorecolumns": dto.ItemLoreColumns = value; break;
                 case "lore": dto.Lore = value; break;
                 case "lore2": dto.Lore2 = value; break;
+                case "real_lore": dto.RealLore = value; break;
                 case "category": dto.Category = value; break;
                 case "categoryb": dto.CategoryB = value; break;
                 case "tier": dto.Tier = value; break;
@@ -60,6 +67,7 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
                 case "museumable": dto.Museumable = value; break;
                 case "bazaarable": dto.Bazaarable = value; break;
                 case "salvageable": dto.Salvageable = value; break;
+                case "sackable": dto.Sackable = value; break;
                 case "soulboundable": dto.Soulboundable = value; break;
                 case "soulboundtype": dto.SoulboundType = value; break;
                 case "rift_item": dto.RiftItem = value; break;
@@ -78,6 +86,10 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
                 case "essence_upgrading": dto.EssenceUpgrading = value; break;
                 case "skins": dto.Skins = value; break;
                 case "sources": dto.Sources = value; break;
+                default: {
+                    dto.AdditionalProperties.TryAdd(key, value);
+                    break;
+                }
             }
         }
         return dto;
@@ -86,5 +98,66 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
     public string GetTemplate(string input)
     {
         return $"Template:Item/{input}";
+    }
+    
+        private Dictionary<string, string> GetTopLevelProperties(string templateBody)
+    {
+        var properties = new Dictionary<string, string>();
+        var nestingLevel = 0;
+        var lastSplitIndex = 0;
+
+        for (int i = 0; i < templateBody.Length; i++)
+        {
+            if (templateBody[i] == '{' && i + 1 < templateBody.Length && templateBody[i+1] == '{')
+            {
+                nestingLevel++;
+                i++; // Skip the second brace
+            }
+            else if (templateBody[i] == '}' && i + 1 < templateBody.Length && templateBody[i+1] == '}')
+            {
+                nestingLevel--;
+                i++; // Skip the second brace
+            }
+            else if (templateBody[i] == '[' && i + 1 < templateBody.Length && templateBody[i+1] == '[')
+            {
+                nestingLevel++;
+                i++; // Skip the second bracket
+            }
+            else if (templateBody[i] == ']' && i + 1 < templateBody.Length && templateBody[i+1] == ']')
+            {
+                nestingLevel--;
+                i++; // Skip the second bracket
+            }
+            // A pipe at the top level (nestingLevel 0) is a property delimiter
+            else if (templateBody[i] == '|' && nestingLevel == 0)
+            {
+                // Extract the previous property segment
+                var propertySegment = templateBody.Substring(lastSplitIndex, i - lastSplitIndex);
+                AddPropertyToDictionary(propertySegment, properties);
+                
+                // Set the start for the next segment
+                lastSplitIndex = i + 1;
+            }
+        }
+
+        // Add the final property after the last pipe
+        var finalSegment = templateBody.Substring(lastSplitIndex);
+        AddPropertyToDictionary(finalSegment, properties);
+
+        return properties;
+    }
+
+    private void AddPropertyToDictionary(string segment, Dictionary<string, string> properties)
+    {
+        var parts = segment.Split(['='], 2);
+        if (parts.Length == 2)
+        {
+            var key = parts[0].Trim();
+            var value = parts[1].Trim();
+            if (!string.IsNullOrEmpty(key) && !key.Contains('{')) // Final check for template params
+            {
+                properties[key] = value;
+            }
+        }
     }
 }
