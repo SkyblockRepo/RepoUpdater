@@ -23,15 +23,23 @@ public class Page
 	public int Pageid { get; set; }
 	public int Ns { get; set; }
 	public required string Title { get; set; }
-	public required List<Revision> Revisions { get; set; }
+	public List<Revision> Revisions { get; set; } = [];
 }
 
 public class Query
 {
 	public required Dictionary<string, Page> Pages { get; set; }
+	
+	public List<QueryNormalization> Normalized { get; set; } = [];
 }
 
 public class WikiApiResponse
 {
 	public required Query Query { get; set; }
+}
+
+public class QueryNormalization
+{
+	public required string From { get; set; }
+	public required string To { get; set; }
 }

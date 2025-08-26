@@ -3,27 +3,59 @@ using System.ComponentModel.DataAnnotations.Schema;
 using HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RepoAPI.Features.Wiki.Templates.ItemTemplate;
+using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Items.Models;
 
 public class SkyblockItem
 {
 	[MaxLength(512)]
-	public required string ItemId { get; set; }
-    
-	public double NpcSellPrice { get; set; }
+	public required string InternalId { get; set; }
+	public string? Category { get; set; }
+	
+	public double NpcValue { get; set; }
+	
+	public ItemFlags Flags { get; set; } = new();
+	
+	[MaxLength(64)]
+	public string Source { get; set; } = "HypixelAPI";
     
 	/// <summary>
 	/// Hypixel item data from /resources/skyblock/items
 	/// </summary>
 	[Column(TypeName = "jsonb")]
 	public ItemResponse? Data { get; set; }
+	
+	/// <summary>
+	/// Raw wikitext from the item template on the Hypixel Wiki.
+	/// </summary>
+	[MapperIgnore]
+	public string? RawTemplate { get; set; }
+	
+	/// <summary>
+	/// Parsed data from the item template on the Hypixel Wiki.
+	/// </summary>
+	[Column(TypeName = "jsonb")]
+	public ItemTemplateDto? TemplateData { get; set; }
+}
+
+[Owned]
+public class ItemFlags
+{
+	public bool Tradable { get; set; }
+	public bool Bazaarable { get; set; }
+	public bool Auctionable { get; set; }
+	public bool Reforgeable { get; set; }
+	public bool Enchantable { get; set; }
+	public bool Museumable { get; set; }
+	public bool Soulboundable { get; set; }
 }
 
 public class SkyblockItemConfiguration : IEntityTypeConfiguration<SkyblockItem>
 {
 	public void Configure(EntityTypeBuilder<SkyblockItem> builder)
 	{
-		builder.HasKey(x => x.ItemId);
+		builder.HasKey(x => x.InternalId);
 	}
 }

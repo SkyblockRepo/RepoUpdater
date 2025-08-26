@@ -17,6 +17,8 @@ public partial class RecipeTemplateParser : ITemplateParser<RecipeTemplateDto>
 
     public RecipeTemplateDto Parse(string wikitext)
     {
+        wikitext = ParserUtils.ExtractIncludeOnlyContent(wikitext);
+        
         var templateDto = new RecipeTemplateDto();
         var nameMatches = RecipeNameRegex().Matches(wikitext);
 

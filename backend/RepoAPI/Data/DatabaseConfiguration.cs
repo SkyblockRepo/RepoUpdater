@@ -21,7 +21,11 @@ public static class DatabaseConfiguration
 		logging.LogInformation("Starting RepoAPI...");
 
 		var db = scope.ServiceProvider.GetRequiredService<DataContext>();
-		try {
+		try
+		{
+			// await db.Database.EnsureDeletedAsync();
+			// await db.Database.EnsureCreatedAsync();
+			
 			await db.Database.MigrateAsync();
 		} catch (Exception e) {
 			Console.Error.WriteLine(e);

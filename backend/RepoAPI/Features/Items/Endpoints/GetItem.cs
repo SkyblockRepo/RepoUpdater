@@ -34,18 +34,11 @@ internal class GetItemEndpoint(ItemService itemService, WikiDataService dataServ
 	public override async Task HandleAsync(GetItemRequest req, CancellationToken ct)
 	{
 		var item = await itemService.GetItemByIdAsync(req.Id, ct);
-		if (item is null)
-		{
-			await Send.NotFoundAsync(ct);
-			return;
-		}
-		
-		var template = await dataService.GetItemData(item.ItemId);
 
 		await Send.OkAsync(new GetItemResponse
 		{
 			Item = item,
-			Template = template
+			Template = item?.TemplateData
 		}, ct);
 	}
 }

@@ -11,6 +11,8 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
 
     public ItemTemplateDto Parse(string wikitext)
     {
+        wikitext = ParserUtils.ExtractIncludeOnlyContent(wikitext);
+        
         var dto = new ItemTemplateDto();
 
         var bodyStartIndex = wikitext.IndexOf('|');
@@ -100,7 +102,7 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
         return $"Template:Item/{input}";
     }
     
-        private Dictionary<string, string> GetTopLevelProperties(string templateBody)
+    private Dictionary<string, string> GetTopLevelProperties(string templateBody)
     {
         var properties = new Dictionary<string, string>();
         var nestingLevel = 0;

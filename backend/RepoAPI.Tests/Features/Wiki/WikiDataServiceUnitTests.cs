@@ -2,6 +2,7 @@ using NSubstitute;
 using RepoAPI.Features.Wiki.Responses;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
+using RepoAPI.Features.Wiki.Templates.PetTemplate;
 using RepoAPI.Features.Wiki.Templates.RecipeTemplate;
 
 namespace RepoAPI.Tests.Features.Wiki;
@@ -17,6 +18,7 @@ public class WikiDataServiceUnitTests
         {
             Query = new Query
             {
+                Normalized = [new QueryNormalization { From = templateTitle, To = templateTitle }],
                 Pages = new Dictionary<string, Page>
                 {
                     { "59272", new Page
@@ -50,7 +52,7 @@ public class WikiDataServiceUnitTests
             .Returns(fakeApiResponse);
         
         var realParser = new RecipeTemplateParser();
-        var wikiDataService = new WikiDataService(mockWikiApi, realParser, new ItemTemplateParser());
+        var wikiDataService = new WikiDataService(mockWikiApi, realParser, new ItemTemplateParser(), new PetTemplateParser());
         
         var result = await wikiDataService.GetRecipeData(itemId);
         

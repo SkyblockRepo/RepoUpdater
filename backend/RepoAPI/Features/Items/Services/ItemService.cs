@@ -13,7 +13,7 @@ public class ItemService(DataContext context, HybridCache cache)
 			$"item-id-{id}",
 			async c =>
 			{
-				return await context.SkyblockItems.FirstOrDefaultAsync(s => s.ItemId == id, c);
+				return await context.SkyblockItems.FirstOrDefaultAsync(s => s.InternalId == id, c);
 			},
 			options: new HybridCacheEntryOptions
 			{
@@ -21,4 +21,14 @@ public class ItemService(DataContext context, HybridCache cache)
 				LocalCacheExpiration = TimeSpan.FromMinutes(2)
 			}, 
 			cancellationToken: ct);
+
+	public async Task<List<SkyblockItemDto>> GetAllItemsAsync(CancellationToken ct, string? source = null)
+	{
+		var query = context.SkyblockItems.AsQueryable().AsNoTracking();
+		if (!string.IsNullOrEmpty(source))
+		{
+			query = query.Where(i => i.Source == source);
+		}
+		return await query.SelectDto().ToListAsync(ct);
+	}
 }
