@@ -82,6 +82,32 @@ public partial class WikiDataService(
 		return result;
 	}
 	
+	public async Task<Dictionary<string, WikiTemplateData<RecipeTemplateDto>?>> BatchGetRecipeData(List<string> recipeTemplates)
+	{
+		var titles = string.Join("|", recipeTemplates);
+		var apiResponse = await wikiApi.GetTemplateContentAsync(titles);
+		
+		var result = new Dictionary<string, WikiTemplateData<RecipeTemplateDto>?>();
+		
+		foreach (var page in apiResponse.Query.Pages.Values) 
+		{
+			var wikitext = page.Revisions.FirstOrDefault()?.Slots.Main.Content;
+			if (wikitext is null) continue;
+			
+			var data = new WikiTemplateData<RecipeTemplateDto>(recipeParser.Parse(wikitext), wikitext);
+			var internalId = data.Data?.OutputInternalId;
+			if (internalId is null) continue;
+			
+			if (string.IsNullOrEmpty(wikitext)) {
+				result[internalId] = null;
+			} else {
+				result[internalId] = new WikiTemplateData<RecipeTemplateDto>(recipeParser.Parse(wikitext), wikitext);
+			}
+		}
+		
+		return result;
+	}
+	
 	public async Task<Dictionary<string, WikiTemplateData<PetTemplateDto>?>> BatchGetPetData(List<string> petTemplates)
 	{
 		var titles = string.Join("|", petTemplates);
@@ -116,6 +142,11 @@ public partial class WikiDataService(
 	public async Task<List<string>> GetAllWikiPetsAsync()
 	{
 		return await GetWikiCategoryAsync("DataPet");
+	}
+	
+	public async Task<List<string>> GetAllWikiRecipesAsync()
+	{
+		return await GetWikiCategoryAsync("DataRecipe");
 	}
 	
 	public async Task<List<string>> GetWikiCategoryAsync(string category)

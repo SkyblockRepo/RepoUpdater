@@ -6,66 +6,58 @@ using System.Text.RegularExpressions;
 public partial class RecipeTemplateParser : ITemplateParser<RecipeTemplateDto>
 {
     [GeneratedRegex(
-        @"\|(first|second|third|fourth|fifth|stranded)\s*=",
+        @"\{\{Item/([^|]+)\|lore\}\}(?:,(\d+))?",
         RegexOptions.Compiled)]
-    private static partial Regex RecipeNameRegex();
+    private static partial Regex RecipeIngredientPatternRegex();
 
-    [GeneratedRegex(
-        @"\|(in\d+|out)\s*=\s*\{\{Item/([^|]+)\|lore\}\}(?:,(\d+))?",
-        RegexOptions.Compiled)]
-    private static partial Regex ItemPatternRegex();
-
+    [GeneratedRegex(@"\{\{Recipe/doc\|(?<id>[A-Z0-9_]+)\}\}", RegexOptions.Compiled)]
+    private static partial Regex RecipeOutputInternalIdRegex();
+    
     public RecipeTemplateDto Parse(string wikitext)
     {
-        wikitext = ParserUtils.ExtractIncludeOnlyContent(wikitext);
-        
         var templateDto = new RecipeTemplateDto();
-        var nameMatches = RecipeNameRegex().Matches(wikitext);
-
-        for (var i = 0; i < nameMatches.Count; i++)
+        
+        var internalId = RecipeOutputInternalIdRegex().Match(wikitext).Groups["id"].Value;
+        if (!string.IsNullOrEmpty(internalId))
         {
-            var currentMatch = nameMatches[i];
-            var recipeName = currentMatch.Groups[1].Value;
-
-            var startIndex = currentMatch.Index + currentMatch.Length;
-            var endIndex = (i + 1 < nameMatches.Count)
-                ? nameMatches[i + 1].Index
-                : wikitext.Length;
-
-            var recipeContent = wikitext.Substring(startIndex, endIndex - startIndex);
-
-            var currentRecipe = new CraftingRecipe { Name = recipeName };
-            var itemMatches = ItemPatternRegex().Matches(recipeContent);
+            templateDto.OutputInternalId = internalId;
+        }
+        
+        var properties = ParserUtils.GetPropDictionary(wikitext);
+        foreach (var (recipeName, recipeText) in properties)
+        {
+            var recipeProperties = ParserUtils.GetPropDictionary(recipeText);
             
-            foreach (Match itemMatch in itemMatches)
+            var currentRecipe = new CraftingRecipe { Name = recipeName };
+
+            foreach (var (key, text) in recipeProperties)
             {
-                var slot = itemMatch.Groups[1].Value;
-                var itemId = itemMatch.Groups[2].Value;
-                var quantity = itemMatch.Groups[3].Success ? int.Parse(itemMatch.Groups[3].Value) : 1;
-                
-                if (slot == "out")
+                var matches = RecipeIngredientPatternRegex().Matches(text);
+                foreach (Match match in matches)
                 {
-                    // Assign the result to the current recipe being processed
-                    currentRecipe.Result = new RecipeResultDto { ItemId = itemId, Quantity = quantity };
-                }
-                else // It's an ingredient
-                {
-                    currentRecipe.Ingredients.Add(new RecipeIngredientDto
+                    var itemId = match.Groups[1].Value;
+                    var quantity = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : 1;
+                    if (key == "out")
                     {
-                        Slot = slot,
-                        ItemId = itemId,
-                        Quantity = quantity
-                    });
+                        currentRecipe.Result = new RecipeResultDto { ItemId = itemId, Quantity = quantity };
+                    }
+                    else
+                    {
+                        currentRecipe.Ingredients.Add(new RecipeIngredientDto
+                        {
+                            Slot = key.Replace("in", "").Trim(),
+                            ItemId = itemId,
+                            Quantity = quantity
+                        });
+                    }
                 }
             }
-            
-            // Add the recipe if it was successfully parsed
-            if (currentRecipe.Ingredients.Count != 0 || currentRecipe.Result != null)
-            {
+
+            if (currentRecipe.Ingredients.Count != 0 || currentRecipe.Result != null) {
                 templateDto.Recipes.Add(currentRecipe);
             }
         }
-
+        
         return templateDto;
     }
 

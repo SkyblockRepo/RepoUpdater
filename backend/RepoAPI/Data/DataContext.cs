@@ -2,6 +2,7 @@ using RepoAPI.Features.Items.Models;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RepoAPI.Features.Pets.Models;
+using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Util;
 
 namespace RepoAPI.Data;
@@ -27,7 +28,6 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
         
         if (environment.IsTesting()) return;
         
-        optionsBuilder.EnableSensitiveDataLogging(environment.IsDevelopment());
         optionsBuilder.UseNpgsql(Source, opt => {
             opt.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
         });
@@ -42,4 +42,7 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
     
     public DbSet<SkyblockItem> SkyblockItems => Set<SkyblockItem>();
     public DbSet<SkyblockPet> SkyblockPets => Set<SkyblockPet>();
+    public DbSet<SkyblockRecipe> SkyblockRecipes => Set<SkyblockRecipe>();
+    public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
+    public DbSet<SkyblockItemRecipeLink> SkyblockItemRecipeLinks => Set<SkyblockItemRecipeLink>();
 }

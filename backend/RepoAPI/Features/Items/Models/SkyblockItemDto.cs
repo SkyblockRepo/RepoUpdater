@@ -1,8 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using HypixelAPI.DTOs;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
@@ -10,6 +8,7 @@ using Riok.Mapperly.Abstractions;
 namespace RepoAPI.Features.Items.Models;
 
 [Mapper]
+[UseStaticMapper(typeof(SkyblockRecipeMapper))]
 public static partial class SkyblockItemMapper
 {
 	public static partial SkyblockItemDto ToDto(this SkyblockItem item);
@@ -36,6 +35,11 @@ public class SkyblockItemDto
 	/// Parsed data from the item template on the Hypixel Wiki.
 	/// </summary>
 	public ItemTemplateDto? TemplateData { get; set; }
+	
+	/// <summary>
+	/// Recipes that can produce this item as an output.
+	/// </summary>
+	public List<SkyblockRecipeDto> Recipes { get; set; } = [];
 }
 
 public static class SkyblockItemExtensions

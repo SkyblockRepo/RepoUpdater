@@ -5,10 +5,6 @@ namespace RepoAPI.Features.Wiki.Templates.ItemTemplate;
 [RegisterService<ITemplateParser<ItemTemplateDto>>(LifeTime.Singleton)]
 public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
 {
-    // Regex to match property names in the format |property_name=
-    [GeneratedRegex(@"\|([^=]+?)\s*=", RegexOptions.Compiled)]
-    private static partial Regex PropertyNameRegex();
-
     public ItemTemplateDto Parse(string wikitext)
     {
         wikitext = ParserUtils.ExtractIncludeOnlyContent(wikitext);
@@ -82,7 +78,21 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
                 case "collection_menu": dto.CollectionMenu = value; break;
                 case "skill_xp": dto.SkillXp = value; break;
                 case "rawmaterials": dto.RawMaterials = value; break;
-                case "recipetree": dto.RecipeTree = value; break;
+                case "recipetree":
+                {
+                    dto.RecipeTree ??= new ItemTemplateRecipeTreeDto();
+                    dto.RecipeTree.Raw = value;
+                    
+                    // Extract item id and recipe name from {{Recipe Tree/CHICKEN_GENERATOR_1|first}} or {{CollapsibleTree/Item/rift_trophy_wyldly_supreme|Base|1}}
+                    var match = RecipeTreeRegex().Match(value);
+                    if (match.Success)
+                    {
+                        dto.RecipeTree.ItemId = match.Groups[1].Value.ToUpperInvariant();
+                        dto.RecipeTree.RecipeName = match.Groups[2].Value;
+                    }
+                    
+                    break;
+                }
                 case "upgrading": dto.Upgrading = value; break;
                 case "scaled_stats": dto.ScaledStats = value; break;
                 case "essence_upgrading": dto.EssenceUpgrading = value; break;
@@ -162,4 +172,7 @@ public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
             }
         }
     }
+
+    [GeneratedRegex(@"\{\{(?:Recipe Tree|CollapsibleTree/Item)/([^|}]+)\|?([^}]*)\}\}")]
+    private static partial Regex RecipeTreeRegex();
 }

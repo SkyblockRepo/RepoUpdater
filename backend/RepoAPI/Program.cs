@@ -1,11 +1,14 @@
+using System.Net;
 using System.Text.Json;
 using RepoAPI.Data;
 using RepoAPI.Util;
 using HypixelAPI;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.AspNetCore.HttpOverrides;
 using Quartz;
 using Refit;
 using RepoAPI.Features.Wiki.Services;
+using IPNetwork = Microsoft.AspNetCore.HttpOverrides.IPNetwork;
 
 var builder = WebApplication.CreateBuilder();
 var services = builder.Services;
@@ -14,7 +17,7 @@ services.AddFastEndpoints(o =>
 {
 	o.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All;
 });
-services.AddSwaggerDocument();
+services.AddSwaggerDocumentation();
 
 services.AddDatabaseConfiguration();
 services.RegisterServicesFromRepoAPI();
@@ -42,12 +45,24 @@ services.AddQuartzHostedService(options => {
 	options.WaitForJobsToComplete = true;
 });
 
+// Use Cloudflare IP address as the client remote IP address
+builder.Services.Configure<ForwardedHeadersOptions>(opt => {
+	opt.ForwardedForHeaderName = "CF-Connecting-IP";
+	opt.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+	// Safe because we only allow Cloudflare to connect to the API through the firewall
+	opt.KnownNetworks.Add(new IPNetwork(IPAddress.Any, 0));
+	opt.KnownNetworks.Add(new IPNetwork(IPAddress.IPv6Any, 0));
+});
+
 builder.AddCacheConfiguration();
 
 var app = builder.Build();
 
+app.UseResponseCaching();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.UseKnownBotDetection();
 
 app.UseFastEndpoints(c =>
 {
@@ -60,6 +75,9 @@ app.UseFastEndpoints(c =>
 	c.Versioning.DefaultVersion = 1;
 	c.Versioning.PrependToRoute = true;
 });
+
+app.UseOpenApiConfiguration();
+app.UseOutputCache();
 
 if (!app.Environment.IsTesting()) {
 	await app.MigrateDatabase();

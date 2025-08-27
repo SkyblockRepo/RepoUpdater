@@ -2,7 +2,7 @@ namespace RepoAPI.Features.Wiki.Templates;
 
 // A generic interface for any template parser.
 // T is the DTO type the parser will return.
-public interface ITemplateParser<T> where T : class
+public interface ITemplateParser<out T> where T : class
 {
 	/// <summary>
 	/// Parses raw wikitext from a template into a structured DTO.

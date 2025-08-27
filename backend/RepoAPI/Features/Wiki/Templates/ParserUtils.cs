@@ -78,4 +78,34 @@ public static class ParserUtils
             ? wikitext 
             : wikitext.Substring(startIndex, endIndex - startIndex);
     }
+
+    public static Dictionary<string, string> GetPropDictionary(string wikitext)
+    { 
+        wikitext = ExtractIncludeOnlyContent(wikitext);
+        
+        var bodyStartIndex = wikitext.IndexOf('|');
+        var bodyEndIndex = wikitext.LastIndexOf("}}", StringComparison.Ordinal);
+
+        if (bodyStartIndex == -1 || bodyEndIndex == -1)
+        {
+            return new Dictionary<string, string>(); // Not a valid template
+        }
+
+        var templateBody = wikitext.Substring(bodyStartIndex + 1, bodyEndIndex - (bodyStartIndex + 1));
+        
+        // Parse the key-value pairs using a brace-counting method.
+        var properties = ParserUtils.GetTopLevelProperties(templateBody);
+
+        var result = new Dictionary<string, string>();
+        
+        foreach (var prop in properties)
+        {
+            var key = prop.Key.Trim().ToLowerInvariant();
+            var value = prop.Value.Replace("\\r", "\r").Replace("\\n", "\n").Trim();
+
+            result.TryAdd(key, value);
+        }
+        
+        return result;
+    }
 }

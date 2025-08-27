@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
 
@@ -38,6 +39,8 @@ public class SkyblockItem
 	/// </summary>
 	[Column(TypeName = "jsonb")]
 	public ItemTemplateDto? TemplateData { get; set; }
+	
+	public List<SkyblockRecipe> Recipes { get; set; } = [];
 }
 
 [Owned]

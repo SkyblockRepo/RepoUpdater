@@ -71,54 +71,5 @@ public class ItemsIngestionService(
         else {
             logger.LogInformation("No updated Skyblock items");
         }
-        
-        if (!initializationRun) return;
-        
-        logger.LogInformation("Initial run, loading item templates from wiki...");
-        var startTime = DateTime.UtcNow;
-        await InitializeWikiData();
-        var duration = DateTime.UtcNow - startTime;
-        logger.LogInformation("Item templates loaded in {Duration}", duration);
-    }
-
-    private async Task InitializeWikiData()
-    {
-        const int batchSize = 50;
-        var newItems = 0;
-        var allItemIds = await wikiService.GetAllWikiItemsAsync();
-
-        for (var i = 0; i < allItemIds.Count; i += batchSize)
-        {
-            var batchIds = allItemIds.Skip(i).Take(batchSize).ToList();
-            var wikiData = await wikiService.BatchGetItemData(batchIds, true);
-            
-            foreach (var templateData in wikiData.Values)
-            {
-                var itemId = templateData?.Data?.InternalId;
-                if (itemId is null) continue;
-
-                var item = await context.SkyblockItems.FindAsync(itemId);
-                if (item is null)
-                {
-                    item = new SkyblockItem
-                    {
-                        InternalId = itemId,
-                        Source = "HypixelWiki",
-                        NpcValue = int.TryParse(templateData?.Data?.Value, out var val) ? val : 0,
-                    };
-                    
-                    newItems++;
-                    context.SkyblockItems.Add(item);
-                }
-
-                item.PopulateTemplateData(templateData);
-            }
-        }
-        
-        await context.SaveChangesAsync();
-
-        if (newItems > 0) { 
-            logger.LogInformation("Initialized wiki data for {NewItems} new items", newItems);
-        }
     }
 }

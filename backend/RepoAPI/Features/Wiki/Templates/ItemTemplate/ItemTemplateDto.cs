@@ -149,7 +149,7 @@ public class ItemTemplateDto
 	public string? RawMaterials { get; set; }
 
 	/// <summary>Displays the item's recipe tree template.</summary>
-	public string? RecipeTree { get; set; }
+	public ItemTemplateRecipeTreeDto? RecipeTree { get; set; }
 
 	/// <summary>Displays the item's upgrading template.</summary>
 	public string? Upgrading { get; set; }
@@ -168,4 +168,11 @@ public class ItemTemplateDto
 	
 	[JsonExtensionData]
 	public Dictionary<string, object> AdditionalProperties { get; set; } = new();
+}
+
+public class ItemTemplateRecipeTreeDto
+{
+	public string? ItemId { get; set; }
+	public string? RecipeName { get; set; }
+	public string? Raw { get; set; }
 }

@@ -20,12 +20,15 @@ internal class GetPetEndpoint(PetService itemService) : Endpoint<GetPetRequest, 
 		Get("pets/{id}");
 		AllowAnonymous();
 		
-		Description(b => b
-			.WithTags("Pets")
-			.Produces<GetPetResponse>(200)
-			.Produces(404)
-			.WithSummary("Get Pet by ID")
-			.WithDescription("Get an item by its ID"));
+		Summary(s => {
+			s.Summary = "Get Pet by ID";
+			s.Description = "Retrieves the details of a specific pet using its internal skyblock id.";
+		});
+		
+		ResponseCache(30);
+		Options(o => {
+			o.CacheOutput(c => c.Expire(TimeSpan.FromSeconds(30)));
+		});
 	}
 
 	public override async Task HandleAsync(GetPetRequest req, CancellationToken ct)

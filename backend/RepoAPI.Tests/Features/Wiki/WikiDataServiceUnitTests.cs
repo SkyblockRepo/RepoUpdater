@@ -68,11 +68,11 @@ public class WikiDataServiceUnitTests
         firstRecipe.Result.ItemId.ShouldBe(itemId);
         firstRecipe.Result.Quantity.ShouldBe(1);
         firstRecipe.Ingredients.Count.ShouldBe(5);
-        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "in2" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "in4" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "in5" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "in6" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "in8" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "2" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "4" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "5" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "6" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        firstRecipe.Ingredients.ShouldContain(i => i.Slot == "8" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
 
         // Assert the "second" recipe
         var secondRecipe = result.Recipes.FirstOrDefault(r => r.Name == "second");
@@ -81,10 +81,10 @@ public class WikiDataServiceUnitTests
         secondRecipe.Result.ItemId.ShouldBe(itemId);
         secondRecipe.Result.Quantity.ShouldBe(1);
         secondRecipe.Ingredients.Count.ShouldBe(5);
-        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "in1" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "in2" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "in3" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "in4" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
-        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "in5" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "1" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "2" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "3" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "4" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
+        secondRecipe.Ingredients.ShouldContain(i => i.Slot == "5" && i.Quantity == 32 && i.ItemId == "ENCHANTED_NETHER_STALK");
     }
 }

@@ -12,23 +12,26 @@ internal class GetItemRequest
 
 internal class GetItemResponse
 {
-	public SkyblockItem? Item { get; set; }
+	public SkyblockItemDto? Item { get; set; }
 	public ItemTemplateDto? Template { get; set; }
 }
 
-internal class GetItemEndpoint(ItemService itemService, WikiDataService dataService) : Endpoint<GetItemRequest, GetItemResponse>
+internal class GetItemEndpoint(IItemService itemService, WikiDataService dataService) : Endpoint<GetItemRequest, GetItemResponse>
 {
 	public override void Configure()
 	{
 		Get("items/{id}");
 		AllowAnonymous();
 		
-		Description(b => b
-			.WithTags("Items")
-			.Produces<GetItemResponse>(200)
-			.Produces(404)
-			.WithSummary("Get Item by ID")
-			.WithDescription("Get an item by its ID"));
+		Summary(s => {
+			s.Summary = "Get Item by ID";
+			s.Description = "Retrieves the details of a specific item using its internal skyblock id.";
+		});
+		
+		ResponseCache(30);
+		Options(o => {
+			o.CacheOutput(c => c.Expire(TimeSpan.FromSeconds(30)));
+		});
 	}
 
 	public override async Task HandleAsync(GetItemRequest req, CancellationToken ct)
@@ -38,7 +41,6 @@ internal class GetItemEndpoint(ItemService itemService, WikiDataService dataServ
 		await Send.OkAsync(new GetItemResponse
 		{
 			Item = item,
-			Template = item?.TemplateData
 		}, ct);
 	}
 }

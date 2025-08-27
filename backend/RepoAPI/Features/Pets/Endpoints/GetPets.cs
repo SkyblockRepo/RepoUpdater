@@ -24,12 +24,15 @@ internal class GetPetsEndpoint(PetService petService) : Endpoint<GetPetsRequest,
 		Get("pets");
 		AllowAnonymous();
 		
-		Description(b => b
-			.WithTags("Pets")
-			.Produces<GetItemResponse>(200)
-			.Produces(404)
-			.WithSummary("Get All Pets")
-			.WithDescription("Get the entire list of items"));
+		Summary(s => {
+			s.Summary = "Get Pets";
+			s.Description = "Retrieves the details of a all pets.";
+		});
+		
+		ResponseCache(30);
+		Options(o => {
+			o.CacheOutput(c => c.Expire(TimeSpan.FromSeconds(30)));
+		});
 	}
 
 	public override async Task HandleAsync(GetPetsRequest request, CancellationToken ct)

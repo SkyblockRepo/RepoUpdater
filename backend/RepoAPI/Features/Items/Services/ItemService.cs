@@ -5,15 +5,25 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace RepoAPI.Features.Items.Services;
 
-[RegisterService<ItemService>(LifeTime.Scoped)]
-public class ItemService(DataContext context, HybridCache cache)
+public interface IItemService
 {
-	public ValueTask<SkyblockItem?> GetItemByIdAsync(string id, CancellationToken ct) =>
+	ValueTask<SkyblockItemDto?> GetItemByIdAsync(string id, CancellationToken ct);
+	Task<List<SkyblockItemDto>> GetAllItemsAsync(CancellationToken ct, string? source = null);
+}
+
+[RegisterService<IItemService>(LifeTime.Scoped)]
+public class ItemService(DataContext context, HybridCache cache) : IItemService
+{
+	public ValueTask<SkyblockItemDto?> GetItemByIdAsync(string id, CancellationToken ct) =>
 		cache.GetOrCreateAsync(
 			$"item-id-{id}",
 			async c =>
 			{
-				return await context.SkyblockItems.FirstOrDefaultAsync(s => s.InternalId == id, c);
+				return await context.SkyblockItems
+					.AsNoTracking()
+					.Include(i => i.Recipes)
+					.SelectDto()
+					.FirstOrDefaultAsync(s => s.InternalId == id, c);
 			},
 			options: new HybridCacheEntryOptions
 			{
@@ -29,6 +39,6 @@ public class ItemService(DataContext context, HybridCache cache)
 		{
 			query = query.Where(i => i.Source == source);
 		}
-		return await query.SelectDto().ToListAsync(ct);
+		return await query.Include(i => i.Recipes).SelectDto().ToListAsync(ct);
 	}
 }

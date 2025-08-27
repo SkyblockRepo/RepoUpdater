@@ -15,19 +15,22 @@ internal class GetItemsResponse
 	public Dictionary<string, SkyblockItemDto> Items { get; set; } = new();
 }
 
-internal class GetItemsEndpoint(ItemService itemService, WikiDataService dataService) : Endpoint<GetItemsRequest, GetItemsResponse>
+internal class GetItemsEndpoint(IItemService itemService, WikiDataService dataService) : Endpoint<GetItemsRequest, GetItemsResponse>
 {
 	public override void Configure()
 	{
 		Get("items");
 		AllowAnonymous();
 		
-		Description(b => b
-			.WithTags("Items")
-			.Produces<GetItemResponse>(200)
-			.Produces(404)
-			.WithSummary("Get All Items")
-			.WithDescription("Get the entire list of items"));
+		Summary(s => {
+			s.Summary = "Get Items";
+			s.Description = "Retrieves the details of all items.";
+		});
+		
+		ResponseCache(30);
+		Options(o => {
+			o.CacheOutput(c => c.Expire(TimeSpan.FromSeconds(30)));
+		});
 	}
 
 	public override async Task HandleAsync(GetItemsRequest request, CancellationToken ct)

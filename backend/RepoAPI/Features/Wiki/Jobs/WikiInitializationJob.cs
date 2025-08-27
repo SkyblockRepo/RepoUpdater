@@ -13,7 +13,7 @@ public class WikiInitializationJob(WikiDataInitService initService) : ISelfConfi
 		quartz.AddJob<WikiInitializationJob>(builder => builder.WithIdentity(Key))
 			.AddTrigger(trigger => {
 				trigger.ForJob(Key);
-				trigger.StartAt(DateTimeOffset.Now.AddSeconds(2));
+				trigger.StartAt(DateTimeOffset.Now.AddSeconds(10));
 				trigger.WithSimpleSchedule(schedule =>
 				{
 					schedule.WithIntervalInHours(int.Parse(configuration["Jobs:WikiInitInHours"] ?? "12"));
@@ -24,6 +24,6 @@ public class WikiInitializationJob(WikiDataInitService initService) : ISelfConfi
 	
 	public async Task Execute(IJobExecutionContext context)
 	{
-		await initService.InitializeWikiDataIfNeededAsync(context.CancellationToken);
+		await initService.InitializeWikiDataAsync(context.CancellationToken);
 	}
 }
