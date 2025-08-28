@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RepoAPI.Data;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using RepoAPI.Features.Wiki.Templates.PetTemplate;
 
 #nullable disable
@@ -15,7 +14,7 @@ using RepoAPI.Features.Wiki.Templates.PetTemplate;
 namespace RepoAPI.Data.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250827034904_Initial")]
+    [Migration("20250828033020_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -28,6 +27,31 @@ namespace RepoAPI.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("RepoAPI.Features.Enchantments.Models.SkyblockEnchantment", b =>
+                {
+                    b.Property<string>("InternalId")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<int>("MaxLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RawTemplate")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("InternalId");
+
+                    b.ToTable("SkyblockEnchantments");
+                });
+
             modelBuilder.Entity("RepoAPI.Features.Items.Models.SkyblockItem", b =>
                 {
                     b.Property<string>("InternalId")
@@ -35,10 +59,19 @@ namespace RepoAPI.Data.Migrations
                         .HasColumnType("character varying(512)");
 
                     b.Property<string>("Category")
-                        .HasColumnType("text");
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<ItemResponse>("Data")
                         .HasColumnType("jsonb");
+
+                    b.Property<string>("Lore")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<double>("NpcValue")
                         .HasColumnType("double precision");
@@ -50,9 +83,6 @@ namespace RepoAPI.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
-
-                    b.Property<ItemTemplateDto>("TemplateData")
-                        .HasColumnType("jsonb");
 
                     b.HasKey("InternalId");
 

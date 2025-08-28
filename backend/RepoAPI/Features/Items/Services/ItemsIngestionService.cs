@@ -52,6 +52,8 @@ public class ItemsIngestionService(
                     Data = item,
                 };
                 
+                newItem.Name = newItem.Data?.Name ?? newItem.InternalId;
+                
                 if (!initializationRun)
                 {
                     var templateData = await wikiService.GetItemData(item.Id);

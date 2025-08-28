@@ -1,15 +1,15 @@
-using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using RepoAPI.Data;
+using RepoAPI.Features.Enchantments.Models;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Recipes.Models;
+using RepoAPI.Features.Wiki.Templates;
 
 namespace RepoAPI.Features.Wiki.Services;
 
 [RegisterService<WikiDataInitService>(LifeTime.Scoped)]
 public class WikiDataInitService(
-	IWikiApi wikiApi, 
 	WikiDataService dataService,
 	ILogger<WikiDataInitService> logger,
 	DataContext context)
@@ -43,6 +43,17 @@ public class WikiDataInitService(
 		if (existingRecipes == 0) {
 			await InitializeWikiRecipes(ct);
 		}
+		
+		var existingEnchantments = await context.SkyblockEnchantments
+			.OrderBy(i => i.InternalId)
+			.Take(1)
+			.CountAsync(ct);
+		
+		if (existingEnchantments == 0) {
+			await InitializeEnchantments(ct);
+		}
+		
+		// await InitializeAttributeShards(ct);
 	}
 	
 	public async Task InitializeWikiDataAsync(CancellationToken ct)
@@ -50,6 +61,8 @@ public class WikiDataInitService(
 		await InitializeWikiItems(ct);
 		await InitializeWikiPets(ct);
 		await InitializeWikiRecipes(ct);
+		await InitializeEnchantments(ct);
+		await InitializeAttributeShards(ct);
 	}
 	
 	private async Task InitializeWikiItems(CancellationToken ct)
@@ -81,28 +94,36 @@ public class WikiDataInitService(
 					newItems++;
 					context.SkyblockItems.Add(item);
 				}
-
-				if (templateData != null) {
-					item.PopulateTemplateData(templateData);
+				
+				item.Name = item.Data?.Name ?? item.InternalId;
+				
+				if (templateData == null) continue;
+				
+				item.PopulateTemplateData(templateData);
 					
-					if (templateData.Data?.RecipeTree?.ItemId is {} recipeTreeId && recipeTreeId != item.InternalId) {
-						logger.LogInformation("Item {ItemId} has a RecipeTree pointing to a different item {RecipeTreeId}", item.InternalId, recipeTreeId);
+				if (templateData.Data?.RecipeTree?.ItemId is {} recipeTreeId && recipeTreeId != item.InternalId) {
+					logger.LogInformation("Item {ItemId} has a RecipeTree pointing to a different item {RecipeTreeId}", item.InternalId, recipeTreeId);
 						
-						context.SkyblockItemRecipeLinks.Add(new SkyblockItemRecipeLink
-						{
-							InternalId = item.InternalId,
-							RecipeId = recipeTreeId,
-						});
+					if (await context.SkyblockItemRecipeLinks.FirstOrDefaultAsync(l => l.InternalId == item.InternalId && l.RecipeId == recipeTreeId, ct) is null) {
+						try {
+							context.SkyblockItemRecipeLinks.Add(new SkyblockItemRecipeLink
+							{
+								InternalId = item.InternalId,
+								RecipeId = recipeTreeId,
+							});
+						} catch (Exception ex) {
+							logger.LogError(ex, "Failed to add recipe link from {ItemId} to {RecipeTreeId}", item.InternalId, recipeTreeId);
+						}
 					}
 				}
 			}
 			
+			await context.SaveChangesAsync(ct);
+			
 			// Wait for a moment to avoid hitting rate limits/overloading the wiki API
 			await Task.Delay(300, ct);
 		}
-        
-		await context.SaveChangesAsync(ct);
-
+		
 		if (newItems > 0) { 
 			logger.LogInformation("Initialized wiki data for {NewItems} new items", newItems);
 		}
@@ -283,5 +304,120 @@ public class WikiDataInitService(
 		if (newRecipes.Count > 0) { 
 			logger.LogInformation("Initialized wiki data for {Recipes} recipes", newRecipes.Count);
 		}
+	}
+
+	private async Task InitializeEnchantments(CancellationToken ct)
+	{
+		var enchantTemplate = await dataService.GetAllWikiEnchantmentsAsync();
+		var newEnchants = 0;
+		const int batchSize = 50;
+		
+		var existingEnchants = await context.SkyblockEnchantments
+			.ToDictionaryAsync(e => e.InternalId, cancellationToken: ct);
+
+		for (var i = 0; i < enchantTemplate.Count; i += batchSize)
+		{
+			if (ct.IsCancellationRequested) return;
+			
+			var batchIds = enchantTemplate.Skip(i).Take(batchSize).ToList();
+			var wikiData = await dataService.BatchGetItemData(batchIds, true);
+			
+			foreach (var templateData in wikiData.Values)
+			{
+				var enchantId = templateData?.Data?.InternalId;
+				if (enchantId is null) continue;
+
+				if (!existingEnchants.TryGetValue(enchantId, out var enchant))
+				{
+					enchant = new SkyblockEnchantment
+					{
+						InternalId = enchantId,
+						Source = "HypixelWiki",
+					};
+					
+					newEnchants++;
+					context.SkyblockEnchantments.Add(enchant);
+				}
+
+				if (templateData == null) continue;
+				
+				enchant.RawTemplate = templateData.Wikitext;
+				
+				var baseName = templateData.Data?.AdditionalProperties.GetValueOrDefault("base_name")?.ToString() ?? enchant.InternalId;
+				
+				var minLevel = templateData.Data?.AdditionalProperties.GetValueOrDefault("minimum_level");
+				if (int.TryParse(minLevel?.ToString(), out var minLevelValue))
+				{
+					enchant.MinLevel = minLevelValue;
+				}
+				
+				var maxLevel = templateData.Data?.AdditionalProperties.GetValueOrDefault("maximum_level");
+				if (int.TryParse(maxLevel?.ToString(), out var maxLevelValue))
+				{
+					enchant.MaxLevel = maxLevelValue;
+				}
+
+				var enchantedBookItems = enchant.GetItemIds();
+				if (enchantedBookItems.Count == 0) continue;
+				
+				var levelDictionary = ParserUtils.GetPropDictionaryFromSwitch(templateData.Data?.Lore ?? "")
+					.Select((s, index) => new { s.Key, s.Value, Index = index })
+					.ToDictionary(
+						x => x.Key.TryParseRoman(out var intKey) ? intKey : -1, 
+						x => ParserUtils.CleanLoreString(x.Value));
+				
+				foreach (var itemId in enchantedBookItems)
+				{
+					var item = await context.SkyblockItems.FirstOrDefaultAsync(it => it.InternalId == itemId, ct);
+					var level = itemId.Split('_').LastOrDefault();
+					
+					if (item is null)
+					{
+						item = new SkyblockItem
+						{
+							InternalId = itemId,
+							Source = "HypixelWikiEnchantment",
+							NpcValue = 0,
+						};
+						
+						context.SkyblockItems.Add(item);
+					}
+
+					item.Name = baseName + " " + level.ToRomanOrDefault();
+					
+					if (level != null && int.TryParse(level, out var levelValue))
+					{
+						if (levelDictionary.TryGetValue(levelValue, out var lore))
+						{
+							item.Lore = lore;
+						}
+					}
+				}
+				
+				await context.SaveChangesAsync(ct);
+				
+				logger.LogInformation("Added {ItemCount} items for {Enchantment}", enchantedBookItems.Count, enchantId);
+			}
+			
+			// Wait for a moment to avoid hitting rate limits/overloading the wiki API
+			await Task.Delay(300, ct);
+		}
+		
+		await context.SaveChangesAsync(ct);
+		
+		if (newEnchants > 0) { 
+			logger.LogInformation("Initialized wiki data for {NewEnchants} new enchantments", newEnchants);
+		}
+	}
+	
+	private async Task InitializeAttributeShards(CancellationToken ct)
+	{
+		var response = await dataService.GetAttributeListAsync();
+		var list = response.Attributes;
+		
+		// if (newItems > 0) { 
+		// 	await context.SaveChangesAsync(ct);
+		// 	logger.LogInformation("Initialized wiki data for {NewItems} new attribute shard items", newItems);
+		// }
 	}
 }

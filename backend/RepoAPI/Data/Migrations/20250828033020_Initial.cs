@@ -2,7 +2,6 @@
 using HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using RepoAPI.Features.Wiki.Templates.PetTemplate;
 
 #nullable disable
@@ -16,11 +15,27 @@ namespace RepoAPI.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "SkyblockEnchantments",
+                columns: table => new
+                {
+                    InternalId = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
+                    Source = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    MinLevel = table.Column<int>(type: "integer", nullable: false),
+                    MaxLevel = table.Column<int>(type: "integer", nullable: false),
+                    RawTemplate = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SkyblockEnchantments", x => x.InternalId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "SkyblockItems",
                 columns: table => new
                 {
                     InternalId = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
-                    Category = table.Column<string>(type: "text", nullable: true),
+                    Name = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    Category = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     NpcValue = table.Column<double>(type: "double precision", nullable: false),
                     Flags_Tradable = table.Column<bool>(type: "boolean", nullable: false),
                     Flags_Bazaarable = table.Column<bool>(type: "boolean", nullable: false),
@@ -30,9 +45,9 @@ namespace RepoAPI.Data.Migrations
                     Flags_Museumable = table.Column<bool>(type: "boolean", nullable: false),
                     Flags_Soulboundable = table.Column<bool>(type: "boolean", nullable: false),
                     Source = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    Lore = table.Column<string>(type: "text", nullable: false),
                     Data = table.Column<ItemResponse>(type: "jsonb", nullable: true),
-                    RawTemplate = table.Column<string>(type: "text", nullable: true),
-                    TemplateData = table.Column<ItemTemplateDto>(type: "jsonb", nullable: true)
+                    RawTemplate = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -147,6 +162,9 @@ namespace RepoAPI.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "RecipeIngredients");
+
+            migrationBuilder.DropTable(
+                name: "SkyblockEnchantments");
 
             migrationBuilder.DropTable(
                 name: "SkyblockItemRecipeLinks");

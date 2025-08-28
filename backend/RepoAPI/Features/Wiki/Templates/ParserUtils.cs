@@ -1,6 +1,9 @@
+using System.Text.RegularExpressions;
+using Humanizer;
+
 namespace RepoAPI.Features.Wiki.Templates;
 
-public static class ParserUtils
+public static partial class ParserUtils
 {
 	public static Dictionary<string, string> GetTopLevelProperties(string templateBody)
     {
@@ -107,5 +110,127 @@ public static class ParserUtils
         }
         
         return result;
+    }
+    
+    [GeneratedRegex(@"#switch\: \{\{\{.*?\}\}\}", RegexOptions.Singleline)]
+    private static partial Regex SwitchConditionRegex();
+    
+    public static Dictionary<string, string> GetPropDictionaryFromSwitch(string wikitext)
+    {
+        return GetPropDictionary(SwitchConditionRegex().Replace(wikitext, ""));
+    }
+    
+    [GeneratedRegex(@"<nowiki>(.*?)<\/nowiki>", RegexOptions.Singleline)]
+    private static partial Regex NoWikiContentsRegex();
+    
+    [GeneratedRegex(@"'''(.*?)'''", RegexOptions.Singleline)]
+    private static partial Regex BoldContentsRegex();
+
+    /// <summary>
+    /// Parses the special comma-separated lore format from an Item template
+    /// into a clean, multi-line string with Minecraft formatting codes.
+    /// </summary>
+    /// <param name="rawLore">The raw lore string, e.g., "mc,legendary,id:name,1,&7Health..."</param>
+    /// <returns>A clean, formatted lore string.</returns>
+    public static string CleanLoreString(string rawLore)
+    {
+        if (string.IsNullOrEmpty(rawLore))
+        {
+            return string.Empty;
+        }
+
+        // Split the string into a maximum of 5 parts. The 5th part will contain
+        // the entire rest of the string, preserving any commas within the lore.
+        var parts = rawLore.Split([','], 5);
+        
+        if (parts.Length < 5) {
+            return rawLore;
+        }
+
+        var loreText = parts[4];
+        
+        loreText = loreText.Replace(@"\\n", "\n");
+        
+        // Remove any <nowiki>...</nowiki> tags, preserving their inner content
+        loreText = NoWikiContentsRegex().Replace(loreText, match => match.Groups[1].Value);
+        // Convert bold formatting to Minecraft's &l code
+        loreText = BoldContentsRegex().Replace(loreText, match => $"&l{match.Groups[1].Value}&r");
+
+        return loreText;
+    }
+    
+    [GeneratedRegex(@"^\s*style[^|]+\|")]
+    private static partial Regex StylePrefixRegex();
+
+    [GeneratedRegex(@"\[\[File:.*\]\]\s*")]
+    private static partial Regex FileLinkRegex();
+
+    [GeneratedRegex(@"\[\[(?:[^|\]]+\|)?([^\]]+)\]\]")]
+    private static partial Regex WikiLinkRegex();
+
+    [GeneratedRegex(@"\{\{([^{}]+?)\}\}")]
+    private static partial Regex InnermostTemplateRegex();
+    
+    /// <summary>
+    /// Srips wikitext of its formatting, links, and templates to return clean plain text.
+    /// </summary>
+    public static string CleanWikitext(string wikitext, bool preserveBreaks = false)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext) || wikitext.Contains("'''—'''")) return "—";
+
+        var text = wikitext;
+        
+        text = StylePrefixRegex().Replace(text, "");
+        text = FileLinkRegex().Replace(text, "");
+
+        while (WikiLinkRegex().IsMatch(text))
+        {
+            text = WikiLinkRegex().Replace(text, "$1");
+        }
+        
+        while (InnermostTemplateRegex().IsMatch(text))
+        {
+            text = InnermostTemplateRegex().Replace(text, match => match.Groups[1].Value.Split('|').LastOrDefault() ?? "");
+        }
+
+        // Step 5: Final cleanup of formatting and whitespace.
+        text = preserveBreaks ? text.Replace("<br>", "\n") : text.Replace("<br>", " ");
+        text = text.Replace("'''", "").Replace("''", "");
+        text = SpaceRegex().Replace(text, " ").Trim();
+        
+        return text;
+    }
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex SpaceRegex();
+    
+    public static bool TryParseRoman(this string roman, out int value)
+    {
+        try {
+            value = roman.FromRoman();
+            return value > 0;
+        } catch {
+            value = 0;
+            return false;
+        }
+    }
+
+    public static string ToRomanOrDefault(this int number, string defaultValue = "I")
+    {
+        try {
+            return number.ToRoman();
+        } catch {
+            return defaultValue;
+        }
+    }
+    
+    public static string ToRomanOrDefault(this string? number, string defaultValue = "I")
+    {
+        if (number is null || !int.TryParse(number, out var numberValue)) return defaultValue;
+        try {
+            return numberValue.ToRoman();
+        } catch {
+            return defaultValue;
+        }
     }
 }

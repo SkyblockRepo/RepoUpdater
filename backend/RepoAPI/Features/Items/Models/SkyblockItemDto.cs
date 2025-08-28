@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using HypixelAPI.DTOs;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Services;
+using RepoAPI.Features.Wiki.Templates;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
 
@@ -20,9 +22,11 @@ public class SkyblockItemDto
 {
 	[MaxLength(512)]
 	public required string InternalId { get; set; }
+	public string Name { get; set; } = string.Empty;
 	public string? Category { get; set; }
 	public string Source { get; set; } = "HypixelAPI";
 	public double NpcValue { get; set; }
+	public string Lore { get; set; } = string.Empty;
 	
 	public ItemFlags Flags { get; set; } = new();
     
@@ -39,6 +43,7 @@ public class SkyblockItemDto
 	/// <summary>
 	/// Recipes that can produce this item as an output.
 	/// </summary>
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public List<SkyblockRecipeDto> Recipes { get; set; } = [];
 }
 
@@ -48,7 +53,7 @@ public static class SkyblockItemExtensions
 	{
 		if (templateData == null) return;
 
-		item.TemplateData = templateData.Data;
+		// item.TemplateData = templateData.Data;
 		item.RawTemplate = templateData.Wikitext;
 
 		item.Flags.Tradable = templateData.Data?.Tradable == "Yes";
@@ -58,5 +63,11 @@ public static class SkyblockItemExtensions
 		item.Flags.Museumable = templateData.Data?.Museumable != "No";
 		item.Flags.Reforgeable = templateData.Data?.Reforgeable == "Yes";
 		item.Flags.Soulboundable = templateData.Data?.Soulboundable == "Yes";
+
+		var newLore = templateData.Data?.Lore ?? "";
+		if (!string.IsNullOrWhiteSpace(newLore)) {
+			item.Lore = ParserUtils.CleanLoreString(newLore);
+		}
+		item.Name = item.Data?.Name ?? templateData?.Data?.Name ?? item.InternalId;
 	}
 }

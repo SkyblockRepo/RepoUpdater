@@ -1,3 +1,4 @@
+using RepoAPI.Features.Wiki.Templates;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 
 namespace RepoAPI.Tests.Features.Wiki.Templates;
@@ -22,12 +23,107 @@ public class ItemTemplateParserTests
     
 		// Verify properties are no longer cut off
 		result.Image.ShouldBe("[[File:SkyBlock_items_mutant_nether_stalk.png|{{{is|25}}}px|link=Mutant Nether Wart]]");
-		result.RecipeTree.ShouldBe("{{Recipe Tree/MUTANT_NETHER_STALK|first}}");
+		result.RecipeTree?.Raw.ShouldBe("{{Recipe Tree/MUTANT_NETHER_STALK|first}}");
+		result.RecipeTree?.ItemId.ShouldBe("MUTANT_NETHER_STALK");
+		result.RecipeTree?.RecipeName.ShouldBe("first");
 		result.CraftingRequirements.ShouldBe("""
 		{{#switch: {{{2|}}}
 		 | Short = [[File:Minecraft_items_nether_wart.png|25px|link=Nether Wart#Collection]] [[Nether Wart#Collection|Nether Wart XI]]
 		 | [[File:Minecraft_items_nether_wart.png|25px|link=Nether Wart#Collection]] [[Nether Wart#Collection|Nether Wart Collection XI]]
 		}}
 		""".Replace("\r\n", "\n"));
+	}
+
+	[Fact]
+	public void LoreParserTest()
+	{
+		var raw = """
+		          mc,legendary,leather_boots_lime:Fermento Boots,1,&7Health: &a+130\\n&7Defense: &a+40\\n&7Speed: &a+5\\n&7Farming Fortune: &a+30\\n&7 &8[&8☘&8] &8[&8☘&8]\\n\\n&8Tiered Bonus: Feast (0/4)\\n&7Combines the Tiered Bonuses of\\n&7wearing &a0 pieces &7of the Melon Armor<nowiki>,</nowiki>\\n&7Cropie Armor<nowiki>,</nowiki> and Squash Armor.\\n&7&7Grants &60☘ Farming Fortune&7.\\n\\n&6Ability: Farmer's Grace \\n&7Grants immunity to trampling crops.\\n\\n&7&8This item can be reforged!\\n&7&4❣ &cRequires &aFarming Skill 40&c.\\n&6'''LEGENDARY BOOTS'''
+		          """;
+		
+		var expected = """
+		           &7Health: &a+130
+		           &7Defense: &a+40
+		           &7Speed: &a+5
+		           &7Farming Fortune: &a+30
+		           &7 &8[&8☘&8] &8[&8☘&8]
+		           
+		           &8Tiered Bonus: Feast (0/4)
+		           &7Combines the Tiered Bonuses of
+		           &7wearing &a0 pieces &7of the Melon Armor,
+		           &7Cropie Armor, and Squash Armor.
+		           &7&7Grants &60☘ Farming Fortune&7.
+		           
+		           &6Ability: Farmer's Grace 
+		           &7Grants immunity to trampling crops.
+		           
+		           &7&8This item can be reforged!
+		           &7&4❣ &cRequires &aFarming Skill 40&c.
+		           &6&lLEGENDARY BOOTS&r
+		           """.Replace("\r\n", "\n");
+		
+		var cleaned = ParserUtils.CleanLoreString(raw);
+		
+		cleaned.ShouldBe(expected);
+	}
+
+	[Fact]
+	public void EnchantmentLoreTest()
+	{
+		var raw = """
+		          "{{#switch: {{{2|I}}}\n| I = !mc,common,enchanted_book:Enchanted Book,1,&7&9Smarty Pants I\n&7Grants &b+5✎ Intelligence&7.\n\n&7Applicable on: &9Leggings\n&7Apply Cost: &320 Exp Levels\n\n&7Use this on an item in an Anvil to\n&7apply it!\n\n&f'''COMMON'''\n| II = !mc,common,enchanted_book:Enchanted Book,1,&7&9Smarty Pants II\n&7Grants &b+10✎ Intelligence&7.\n\n&7Applicable on: &9Leggings\n&7Apply Cost: &340 Exp Levels\n\n&7Use this on an item in an Anvil to\n&7apply it!\n\n&f'''COMMON'''\n| III = !mc,common,enchanted_book:Enchanted Book,1,&7&9Smarty Pants III\n&7Grants &b+15✎ Intelligence&7.\n\n&7Applicable on: &9Leggings\n&7Apply Cost: &360 Exp Levels\n\n&7Use this on an item in an Anvil to\n&7apply it!\n\n&f'''COMMON'''\n| IV = !mc,common,enchanted_book:Enchanted Book,1,&7&9Smarty Pants IV\n&7Grants &b+20✎ Intelligence&7.\n\n&7Applicable on: &9Leggings\n&7Apply Cost: &380 Exp Levels\n\n&7Use this on an item in an Anvil to\n&7apply it!\n\n&f'''COMMON'''\n| V = !mc,uncommon,enchanted_book:Enchanted Book,1,&7&9Smarty Pants V\n&7Grants &b+25✎ Intelligence&7.\n\n&7Applicable on: &9Leggings\n&7Apply Cost: &3100 Exp Levels\n\n&7Use this on an item in an Anvil to\n&7apply it!\n\n&a'''UNCOMMON'''\n}}"
+		          """;
+		
+		var properties = ParserUtils.GetPropDictionaryFromSwitch(raw);
+		properties.ShouldContainKey("i");
+		properties.ShouldContainKey("ii");
+		properties.ShouldContainKey("iii");
+		properties.ShouldContainKey("iv");
+		properties.ShouldContainKey("v");
+		
+		ParserUtils.CleanLoreString(properties["i"]).ShouldBe(
+		"""
+		&7&9Smarty Pants I
+		&7Grants &b+5✎ Intelligence&7.
+		
+		&7Applicable on: &9Leggings
+		&7Apply Cost: &320 Exp Levels
+		
+		&7Use this on an item in an Anvil to
+		&7apply it!
+		
+		&f&lCOMMON&r
+		""".Replace("\r\n", "\n")
+		);
+		
+		ParserUtils.CleanLoreString(properties["ii"]).ShouldBe(
+			"""
+			&7&9Smarty Pants II
+			&7Grants &b+10✎ Intelligence&7.
+			
+			&7Applicable on: &9Leggings
+			&7Apply Cost: &340 Exp Levels
+			
+			&7Use this on an item in an Anvil to
+			&7apply it!
+			
+			&f&lCOMMON&r
+			""".Replace("\r\n", "\n")
+		);
+		
+		ParserUtils.CleanLoreString(properties["v"]).ShouldBe(
+			"""
+			&7&9Smarty Pants V
+			&7Grants &b+25✎ Intelligence&7.
+			
+			&7Applicable on: &9Leggings
+			&7Apply Cost: &3100 Exp Levels
+			
+			&7Use this on an item in an Anvil to
+			&7apply it!
+			
+			&a&lUNCOMMON&r
+			""".Replace("\r\n", "\n")
+		);
 	}
 }

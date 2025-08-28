@@ -13,6 +13,10 @@ public class SkyblockItem
 {
 	[MaxLength(512)]
 	public required string InternalId { get; set; }
+	[MaxLength(512)]
+	public string? Name { get; set; }
+	
+	[MaxLength(512)]
 	public string? Category { get; set; }
 	
 	public double NpcValue { get; set; }
@@ -21,6 +25,8 @@ public class SkyblockItem
 	
 	[MaxLength(64)]
 	public string Source { get; set; } = "HypixelAPI";
+	
+	public string Lore { get; set; } = string.Empty;
     
 	/// <summary>
 	/// Hypixel item data from /resources/skyblock/items
@@ -37,8 +43,9 @@ public class SkyblockItem
 	/// <summary>
 	/// Parsed data from the item template on the Hypixel Wiki.
 	/// </summary>
-	[Column(TypeName = "jsonb")]
-	public ItemTemplateDto? TemplateData { get; set; }
+	// [Column(TypeName = "jsonb")]
+	// public ItemTemplateDto? TemplateData { get; set; }
+	public ItemTemplateDto? TemplateData => RawTemplate == null ? null : new ItemTemplateParser().Parse(RawTemplate);
 	
 	public List<SkyblockRecipe> Recipes { get; set; } = [];
 }

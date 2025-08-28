@@ -51,8 +51,7 @@ public class WikiDataServiceUnitTests
             .GetTemplateContentAsync(templateTitle)
             .Returns(fakeApiResponse);
         
-        var realParser = new RecipeTemplateParser();
-        var wikiDataService = new WikiDataService(mockWikiApi, realParser, new ItemTemplateParser(), new PetTemplateParser());
+        var wikiDataService = new WikiDataService(mockWikiApi);
         
         var result = await wikiDataService.GetRecipeData(itemId);
         

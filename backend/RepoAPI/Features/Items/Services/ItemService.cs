@@ -12,7 +12,7 @@ public interface IItemService
 }
 
 [RegisterService<IItemService>(LifeTime.Scoped)]
-public class ItemService(DataContext context, HybridCache cache) : IItemService
+public class ItemService(DataContext context, HybridCache cache, IWebHostEnvironment environment) : IItemService
 {
 	public ValueTask<SkyblockItemDto?> GetItemByIdAsync(string id, CancellationToken ct) =>
 		cache.GetOrCreateAsync(
@@ -27,8 +27,8 @@ public class ItemService(DataContext context, HybridCache cache) : IItemService
 			},
 			options: new HybridCacheEntryOptions
 			{
-				Expiration = TimeSpan.FromMinutes(10),
-				LocalCacheExpiration = TimeSpan.FromMinutes(2)
+				Expiration = TimeSpan.FromMinutes(environment.IsDevelopment() ? 1 : 10),
+				LocalCacheExpiration = TimeSpan.FromMinutes(environment.IsDevelopment() ? 1 : 5)
 			}, 
 			cancellationToken: ct);
 
@@ -39,6 +39,9 @@ public class ItemService(DataContext context, HybridCache cache) : IItemService
 		{
 			query = query.Where(i => i.Source == source);
 		}
-		return await query.Include(i => i.Recipes).SelectDto().ToListAsync(ct);
+		return await query.Include(i => i.Recipes)
+			// .Where(i => i.RawTemplate == null)
+			.SelectDto()
+			.ToListAsync(ct);
 	}
 }

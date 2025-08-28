@@ -1,4 +1,5 @@
 using RepoAPI.Features.Wiki.Templates;
+using RepoAPI.Features.Wiki.Templates.AttributeList;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using RepoAPI.Features.Wiki.Templates.PetTemplate;
 using RepoAPI.Features.Wiki.Templates.RecipeTemplate;
@@ -7,16 +8,16 @@ namespace RepoAPI.Features.Wiki.Services;
 public record WikiTemplateData<T>(T? Data, string Wikitext);
 
 [RegisterService<WikiDataService>(LifeTime.Scoped)]
-public partial class WikiDataService(
-	IWikiApi wikiApi,
-	ITemplateParser<RecipeTemplateDto> recipeParser,
-	ITemplateParser<ItemTemplateDto> itemTemplateParser,
-	ITemplateParser<PetTemplateDto> petTemplateParser
-	)
+public partial class WikiDataService(IWikiApi wikiApi)
 {
+	public ITemplateParser<RecipeTemplateDto> RecipeTemplateParser { get; } = new RecipeTemplateParser();
+	public ITemplateParser<ItemTemplateDto> ItemTemplateParser { get; } = new ItemTemplateParser();
+	public ITemplateParser<PetTemplateDto> PetTemplateParser { get; } = new PetTemplateParser();
+	public ITemplateParser<AttributeListTemplateDto> AttributeListParser { get; } = new AttributeListParser();
+	
 	public async Task<RecipeTemplateDto?> GetRecipeData(string itemId)
 	{
-		var apiResponse = await wikiApi.GetTemplateContentAsync(recipeParser.GetTemplate(itemId));
+		var apiResponse = await wikiApi.GetTemplateContentAsync(RecipeTemplateParser.GetTemplate(itemId));
 
 		var page = apiResponse.Query.Pages.Values.FirstOrDefault();
 		var wikitext = page?.Revisions.FirstOrDefault()?.Slots.Main.Content;
@@ -26,12 +27,12 @@ public partial class WikiDataService(
 			return null;
 		}
 
-		return recipeParser.Parse(wikitext);
+		return RecipeTemplateParser.Parse(wikitext);
 	}
 	
 	public async Task<WikiTemplateData<ItemTemplateDto>?> GetItemData(string itemId) 
 	{
-		var apiResponse = await wikiApi.GetTemplateContentAsync(itemTemplateParser.GetTemplate(itemId));
+		var apiResponse = await wikiApi.GetTemplateContentAsync(ItemTemplateParser.GetTemplate(itemId));
 
 		var page = apiResponse.Query.Pages.Values.FirstOrDefault();
 		var wikitext = page?.Revisions.FirstOrDefault()?.Slots.Main.Content;
@@ -40,14 +41,14 @@ public partial class WikiDataService(
 			return null;
 		}
 
-		return new WikiTemplateData<ItemTemplateDto>(itemTemplateParser.Parse(wikitext), wikitext);
+		return new WikiTemplateData<ItemTemplateDto>(ItemTemplateParser.Parse(wikitext), wikitext);
 	}
 	
 	public async Task<Dictionary<string, WikiTemplateData<ItemTemplateDto>?>> BatchGetItemData(List<string> itemIds, bool templates = false)
 	{
 		var titleMapping = templates 
 			? itemIds.ToDictionary(x => x, x => x)
-			: itemIds.ToDictionary(itemTemplateParser.GetTemplate, id => id);
+			: itemIds.ToDictionary(ItemTemplateParser.GetTemplate, id => id);
 		
 		var titles = string.Join("|", titleMapping.Keys);
 		var apiResponse = await wikiApi.GetTemplateContentAsync(titles);
@@ -75,7 +76,7 @@ public partial class WikiDataService(
 			if (string.IsNullOrEmpty(wikitext)) {
 				result[itemId] = null;
 			} else {
-				result[itemId] = new WikiTemplateData<ItemTemplateDto>(itemTemplateParser.Parse(wikitext), wikitext);
+				result[itemId] = new WikiTemplateData<ItemTemplateDto>(ItemTemplateParser.Parse(wikitext), wikitext);
 			}
 		}
 		
@@ -94,14 +95,14 @@ public partial class WikiDataService(
 			var wikitext = page.Revisions.FirstOrDefault()?.Slots.Main.Content;
 			if (wikitext is null) continue;
 			
-			var data = new WikiTemplateData<RecipeTemplateDto>(recipeParser.Parse(wikitext), wikitext);
+			var data = new WikiTemplateData<RecipeTemplateDto>(RecipeTemplateParser.Parse(wikitext), wikitext);
 			var internalId = data.Data?.OutputInternalId;
 			if (internalId is null) continue;
 			
 			if (string.IsNullOrEmpty(wikitext)) {
 				result[internalId] = null;
 			} else {
-				result[internalId] = new WikiTemplateData<RecipeTemplateDto>(recipeParser.Parse(wikitext), wikitext);
+				result[internalId] = new WikiTemplateData<RecipeTemplateDto>(RecipeTemplateParser.Parse(wikitext), wikitext);
 			}
 		}
 		
@@ -120,14 +121,14 @@ public partial class WikiDataService(
 			var wikitext = page.Revisions.FirstOrDefault()?.Slots.Main.Content;
 			if (wikitext is null) continue;
 			
-			var data = new WikiTemplateData<PetTemplateDto>(petTemplateParser.Parse(wikitext), wikitext);
+			var data = new WikiTemplateData<PetTemplateDto>(PetTemplateParser.Parse(wikitext), wikitext);
 			var internalId = data.Data?.InternalId;
 			if (internalId is null) continue;
 			
 			if (string.IsNullOrEmpty(wikitext)) {
 				result[internalId] = null;
 			} else {
-				result[internalId] = new WikiTemplateData<PetTemplateDto>(petTemplateParser.Parse(wikitext), wikitext);
+				result[internalId] = new WikiTemplateData<PetTemplateDto>(PetTemplateParser.Parse(wikitext), wikitext);
 			}
 		}
 		
@@ -139,6 +140,11 @@ public partial class WikiDataService(
 		return await GetWikiCategoryAsync("DataItem");
 	}
 	
+	public async Task<List<string>> GetAllWikiEnchantmentsAsync()
+	{
+		return await GetWikiCategoryAsync("DataEnchantment");
+	}
+	
 	public async Task<List<string>> GetAllWikiPetsAsync()
 	{
 		return await GetWikiCategoryAsync("DataPet");
@@ -147,6 +153,25 @@ public partial class WikiDataService(
 	public async Task<List<string>> GetAllWikiRecipesAsync()
 	{
 		return await GetWikiCategoryAsync("DataRecipe");
+	}
+	
+	public async Task<List<string>> GetAllLootTablesAsync()
+	{
+		var category = await GetWikiCategoryAsync("DataLootTable");
+		return category.Where(c => c.Contains("Loot_Table")).ToList();
+	}
+	
+	public async Task<string> GetPageContentAsync(string title)
+	{
+		var response = await wikiApi.GetTemplateContentAsync(title);
+		var page = response.Query.Pages.Values.FirstOrDefault();
+		return page?.Revisions.FirstOrDefault()?.Slots.Main.Content ?? "";
+	}
+	
+	public async Task<AttributeListTemplateDto> GetAttributeListAsync()
+	{
+		var wikitext = await GetPageContentAsync("Template:Attribute_Shard_List");
+		return AttributeListParser.Parse(wikitext);
 	}
 	
 	public async Task<List<string>> GetWikiCategoryAsync(string category)
