@@ -16,6 +16,8 @@
     "*.pcss": "tailwindcss",
     ".env*": "properties"
   },
+  "git.detectSubmodules": true,
+  "git.detectSubmodulesLimit": 10,
   "workbench.editor.customLabels.patterns": {
     // Page
     "**/routes/**/*/+page.svelte": "${dirname} - Page",
