@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RepoAPI.Core.Services;
 using RepoAPI.Data;
 using RepoAPI.Features.Enchantments.Models;
+using RepoAPI.Features.Enchantments.Services;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Recipes.Models;
@@ -15,6 +16,7 @@ public class WikiDataInitService(
 	IWikiDataService dataService,
 	ILogger<WikiDataInitService> logger,
 	RecipeIngestionService recipeIngestionService,
+	EnchantmentIngestionService enchantmentIngestionService,
 	DataContext context)
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
@@ -52,9 +54,9 @@ public class WikiDataInitService(
 			.Take(1)
 			.CountAsync(ct);
 		
-		if (existingEnchantments == 0) {
-			await InitializeEnchantments(ct);
-		}
+		// if (existingEnchantments == 0) {
+			await enchantmentIngestionService.FetchAndLoadDataAsync(ct);
+		// }
 		
 		// await InitializeAttributeShards(ct);
 	}
@@ -64,7 +66,7 @@ public class WikiDataInitService(
 		await InitializeWikiItems(ct);
 		await InitializeWikiPets(ct);
 		await recipeIngestionService.FetchAndLoadDataAsync(ct);
-		await InitializeEnchantments(ct);
+		await enchantmentIngestionService.FetchAndLoadDataAsync(ct);
 		await InitializeAttributeShards(ct);
 	}
 	
@@ -174,110 +176,6 @@ public class WikiDataInitService(
 
 		if (newPets > 0) { 
 			logger.LogInformation("Initialized wiki data for {NewPets} new pets", newPets);
-		}
-	}
-	
-	private async Task InitializeEnchantments(CancellationToken ct)
-	{
-		var enchantTemplate = await dataService.GetAllWikiEnchantmentsAsync();
-		var newEnchants = 0;
-		const int batchSize = 50;
-		
-		var existingEnchants = await context.SkyblockEnchantments
-			.ToDictionaryAsync(e => e.InternalId, cancellationToken: ct);
-
-		for (var i = 0; i < enchantTemplate.Count; i += batchSize)
-		{
-			if (ct.IsCancellationRequested) return;
-			
-			var batchIds = enchantTemplate.Skip(i).Take(batchSize).ToList();
-			var wikiData = await dataService.BatchGetItemData(batchIds, true);
-			
-			foreach (var templateData in wikiData.Values)
-			{
-				var enchantId = templateData?.Data?.InternalId;
-				if (enchantId is null) continue;
-
-				if (!existingEnchants.TryGetValue(enchantId, out var enchant))
-				{
-					enchant = new SkyblockEnchantment
-					{
-						InternalId = enchantId,
-						Source = "HypixelWiki",
-					};
-					
-					newEnchants++;
-					context.SkyblockEnchantments.Add(enchant);
-				}
-
-				if (templateData == null) continue;
-				
-				enchant.RawTemplate = templateData.Wikitext;
-				
-				var baseName = templateData.Data?.AdditionalProperties.GetValueOrDefault("base_name")?.ToString() ?? enchant.InternalId;
-				
-				var minLevel = templateData.Data?.AdditionalProperties.GetValueOrDefault("minimum_level");
-				if (int.TryParse(minLevel?.ToString(), out var minLevelValue))
-				{
-					enchant.MinLevel = minLevelValue;
-				}
-				
-				var maxLevel = templateData.Data?.AdditionalProperties.GetValueOrDefault("maximum_level");
-				if (int.TryParse(maxLevel?.ToString(), out var maxLevelValue))
-				{
-					enchant.MaxLevel = maxLevelValue;
-				}
-
-				var enchantedBookItems = enchant.GetItemIds();
-				if (enchantedBookItems.Count == 0) continue;
-				
-				var levelDictionary = ParserUtils.GetPropDictionaryFromSwitch(templateData.Data?.Lore ?? "")
-					.Select((s, index) => new { s.Key, s.Value, Index = index })
-					.ToDictionary(
-						x => x.Key.TryParseRoman(out var intKey) ? intKey : -1, 
-						x => ParserUtils.CleanLoreString(x.Value));
-				
-				foreach (var itemId in enchantedBookItems)
-				{
-					var item = await context.SkyblockItems.FirstOrDefaultAsync(it => it.InternalId == itemId, ct);
-					var level = itemId.Split('_').LastOrDefault();
-					
-					if (item is null)
-					{
-						item = new SkyblockItem
-						{
-							InternalId = itemId,
-							Source = "HypixelWikiEnchantment",
-							NpcValue = 0,
-						};
-						
-						context.SkyblockItems.Add(item);
-					}
-
-					item.Name = baseName + " " + level.ToRomanOrDefault();
-					
-					if (level != null && int.TryParse(level, out var levelValue))
-					{
-						if (levelDictionary.TryGetValue(levelValue, out var lore))
-						{
-							item.Lore = lore;
-						}
-					}
-				}
-				
-				await context.SaveChangesAsync(ct);
-				
-				logger.LogInformation("Added {ItemCount} items for {Enchantment}", enchantedBookItems.Count, enchantId);
-			}
-			
-			// Wait for a moment to avoid hitting rate limits/overloading the wiki API
-			await Task.Delay(300, ct);
-		}
-		
-		await context.SaveChangesAsync(ct);
-		
-		if (newEnchants > 0) { 
-			logger.LogInformation("Initialized wiki data for {NewEnchants} new enchantments", newEnchants);
 		}
 	}
 	
