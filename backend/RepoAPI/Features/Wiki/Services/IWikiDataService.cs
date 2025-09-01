@@ -7,8 +7,26 @@ namespace RepoAPI.Features.Wiki.Services;
 
 public record WikiTemplateData<T>(T? Data, string Wikitext);
 
-[RegisterService<WikiDataService>(LifeTime.Scoped)]
-public partial class WikiDataService(IWikiApi wikiApi)
+public interface IWikiDataService
+{
+	Task<RecipeTemplateDto?> GetRecipeData(string itemId);
+	Task<WikiTemplateData<ItemTemplateDto>?> GetItemData(string itemId);
+	Task<Dictionary<string, WikiTemplateData<ItemTemplateDto>?>> BatchGetItemData(List<string> itemIds, bool templates = false);
+	Task<Dictionary<string, WikiTemplateData<RecipeTemplateDto>?>> BatchGetRecipeData(List<string> recipeTemplates);
+	Task<Dictionary<string, WikiTemplateData<PetTemplateDto>?>> BatchGetPetData(List<string> petTemplates);
+	Task<List<string>> GetAllWikiItemsAsync();
+	Task<List<string>> GetAllWikiEnchantmentsAsync();
+	Task<List<string>> GetAllWikiPetsAsync();
+	Task<List<string>> GetAllWikiRecipesAsync();
+	Task<List<string>> GetAllLootTablesAsync();
+	Task<string> GetPageContentAsync(string title);
+	Task<AttributeListTemplateDto> GetAttributeListAsync();
+	Task<List<string>> GetWikiCategoryAsync(string category);
+}
+
+
+[RegisterService<IWikiDataService>(LifeTime.Scoped)]
+public class WikiDataService(IWikiApi wikiApi) : IWikiDataService
 {
 	public ITemplateParser<RecipeTemplateDto> RecipeTemplateParser { get; } = new RecipeTemplateParser();
 	public ITemplateParser<ItemTemplateDto> ItemTemplateParser { get; } = new ItemTemplateParser();
@@ -163,8 +181,8 @@ public partial class WikiDataService(IWikiApi wikiApi)
 	
 	public async Task<string> GetPageContentAsync(string title)
 	{
-		var response = await wikiApi.GetTemplateContentAsync(title);
-		var page = response.Query.Pages.Values.FirstOrDefault();
+		var apiResponse = await wikiApi.GetTemplateContentAsync(title);
+		var page = apiResponse.Query.Pages.Values.FirstOrDefault();
 		return page?.Revisions.FirstOrDefault()?.Slots.Main.Content ?? "";
 	}
 	

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using RepoAPI.Core;
+using RepoAPI.Features.Output.Services;
 using RepoAPI.Util;
 
 namespace RepoAPI.Data;
@@ -8,6 +10,8 @@ public static class DatabaseConfiguration
 	public static IServiceCollection AddDatabaseConfiguration(this IServiceCollection services)
 	{
 		services.AddDbContext<DataContext>();
+		services.AddHostedService<ApplyChangesJob>();
+		services.AddHostedService<JsonFileWriterService>();
 		
 		return services;
 	}

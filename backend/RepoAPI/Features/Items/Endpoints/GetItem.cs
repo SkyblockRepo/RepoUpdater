@@ -16,7 +16,7 @@ internal class GetItemResponse
 	public ItemTemplateDto? Template { get; set; }
 }
 
-internal class GetItemEndpoint(IItemService itemService, WikiDataService dataService) : Endpoint<GetItemRequest, GetItemResponse>
+internal class GetItemEndpoint(IItemService itemService, IWikiDataService dataService) : Endpoint<GetItemRequest, GetItemResponse>
 {
 	public override void Configure()
 	{

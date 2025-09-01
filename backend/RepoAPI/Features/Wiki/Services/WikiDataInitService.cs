@@ -1,17 +1,20 @@
 using Microsoft.EntityFrameworkCore;
+using RepoAPI.Core.Services;
 using RepoAPI.Data;
 using RepoAPI.Features.Enchantments.Models;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Recipes.Models;
+using RepoAPI.Features.Recipes.Services;
 using RepoAPI.Features.Wiki.Templates;
 
 namespace RepoAPI.Features.Wiki.Services;
 
 [RegisterService<WikiDataInitService>(LifeTime.Scoped)]
 public class WikiDataInitService(
-	WikiDataService dataService,
+	IWikiDataService dataService,
 	ILogger<WikiDataInitService> logger,
+	RecipeIngestionService recipeIngestionService,
 	DataContext context)
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
@@ -41,7 +44,7 @@ public class WikiDataInitService(
 			.CountAsync(ct);
 		
 		if (existingRecipes == 0) {
-			await InitializeWikiRecipes(ct);
+			await recipeIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		
 		var existingEnchantments = await context.SkyblockEnchantments
@@ -60,7 +63,7 @@ public class WikiDataInitService(
 	{
 		await InitializeWikiItems(ct);
 		await InitializeWikiPets(ct);
-		await InitializeWikiRecipes(ct);
+		await recipeIngestionService.FetchAndLoadDataAsync(ct);
 		await InitializeEnchantments(ct);
 		await InitializeAttributeShards(ct);
 	}
@@ -174,138 +177,6 @@ public class WikiDataInitService(
 		}
 	}
 	
-	private async Task InitializeWikiRecipes(CancellationToken ct)
-	{
-		const int batchSize = 50;
-		var allPetIds = await dataService.GetAllWikiRecipesAsync();
-
-		var newRecipes = new List<SkyblockRecipe>();
-		
-		for (var i = 0; i < allPetIds.Count; i += batchSize)
-		{
-			var batchIds = allPetIds.Skip(i).Take(batchSize).ToList();
-			var wikiData = await dataService.BatchGetRecipeData(batchIds);
-            
-			foreach (var recipeTemplateDto in wikiData.Values)
-			{
-				var recipes = recipeTemplateDto?.Data?.Recipes;
-				if (recipes is null) continue;
-				
-				foreach (var recipe in recipes)
-				{
-					var newRecipe = new SkyblockRecipe()
-					{
-						Id = Guid.CreateVersion7(),
-						Type = RecipeType.Crafting,
-						Hash = recipe.Hash,
-						ResultInternalId = recipe.Result?.ItemId,
-						ResultQuantity = recipe.Result?.Quantity ?? 1,
-					};
-
-					foreach (var ingredient in recipe.Ingredients)
-					{
-						newRecipe.Ingredients.Add(new RecipeIngredient
-						{
-							RecipeId = newRecipe.Id,
-							
-							Slot = ingredient.Slot,
-							InternalId = ingredient.ItemId,
-							Quantity = ingredient.Quantity,
-						});
-					}
-					
-					newRecipes.Add(newRecipe);
-				}
-			}
-		}
-
-		if (newRecipes.Count == 0)
-		{
-			logger.LogError("No recipes found to initialize.");
-			return;
-		}
-		
-		var transaction = await context.Database.BeginTransactionAsync(ct);
-		try
-		{
-			// Delete existing crafting recipes
-			await context.SkyblockRecipes
-				.Where(t => t.Type == RecipeType.Crafting)
-				.ExecuteDeleteAsync(cancellationToken: ct);
-			
-			var existingItems = await context.SkyblockItems
-				.ToDictionaryAsync(i => i.InternalId, ct);
-			
-			var existingLinks = await context.SkyblockItemRecipeLinks
-				.ToDictionaryAsync(l => l.RecipeId, l => l.InternalId, cancellationToken: ct);
-			
-			// Ensure all ingredients exist as items
-			foreach (var recipe in newRecipes)
-			{
-				if (recipe.ResultInternalId != null && !existingItems.ContainsKey(recipe.ResultInternalId))
-				{
-					if (existingLinks.TryGetValue(recipe.ResultInternalId, out var linkId))
-					{
-						logger.LogWarning("Pointing recipe for {Item} to {LinkId}", recipe.ResultInternalId, linkId);
-						recipe.ResultInternalId = linkId;
-						
-						if (!existingItems.ContainsKey(recipe.ResultInternalId)) {
-							await AddMissingItem(recipe.ResultInternalId);
-						}
-					} else {
-						await AddMissingItem(recipe.ResultInternalId);
-					}
-				}
-				
-				foreach (var ingredient in recipe.Ingredients)
-				{
-					if (existingItems.ContainsKey(ingredient.InternalId)) continue;
-
-					if (existingLinks.TryGetValue(ingredient.InternalId, out var linkId))
-					{
-						logger.LogWarning("Pointing ingredient id for {Item} to {LinkId}", recipe.ResultInternalId, linkId);
-						ingredient.InternalId = linkId;
-					}
-
-					if (existingItems.ContainsKey(ingredient.InternalId)) continue;
-					
-					await AddMissingItem(ingredient.InternalId);
-				}
-				
-				continue;
-				async Task AddMissingItem(string itemId)
-				{
-					var newItem = new SkyblockItem
-					{
-						InternalId = itemId,
-						Source = "HypixelWikiRecipe",
-						NpcValue = 0,
-					};
-					existingItems[itemId] = newItem;
-					context.SkyblockItems.Add(newItem);
-					logger.LogInformation("Added missing item {Item} for {Recipe}", itemId, recipe);
-					
-					await context.SaveChangesAsync(ct);
-				}
-			}
-			
-			await context.SkyblockRecipes.AddRangeAsync(newRecipes, ct);
-			await context.SaveChangesAsync(ct);
-			
-			await transaction.CommitAsync(ct);
-		}
-		catch (Exception ex)
-		{
-			await transaction.RollbackAsync(ct);
-			logger.LogError(ex, "Failed to initialize recipes.");
-			return;
-		}
-		
-		if (newRecipes.Count > 0) { 
-			logger.LogInformation("Initialized wiki data for {Recipes} recipes", newRecipes.Count);
-		}
-	}
-
 	private async Task InitializeEnchantments(CancellationToken ct)
 	{
 		var enchantTemplate = await dataService.GetAllWikiEnchantmentsAsync();

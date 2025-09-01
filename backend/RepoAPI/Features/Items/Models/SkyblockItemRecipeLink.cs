@@ -29,10 +29,5 @@ public class SkyblockItemRecipeLinkConfiguration : IEntityTypeConfiguration<Skyb
 	{
 		builder.HasKey(x => new { x.InternalId, x.RecipeId });
 		builder.HasIndex(x => x.RecipeId);
-		
-		builder.HasOne<SkyblockItem>()
-			.WithMany()
-			.HasForeignKey(x => x.InternalId)
-			.OnDelete(DeleteBehavior.Cascade);
 	}
 }

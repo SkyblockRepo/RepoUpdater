@@ -1,15 +1,32 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RepoAPI.Core.Models;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Enchantments.Models;
 
-public class SkyblockEnchantment
+public class SkyblockEnchantment : IVersionedEntity
 {
+	#region IVersionedEntity Implementation
+	[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+	[MapperIgnore]
+	public int Id { get; set; }
+	
+	[MapperIgnore]
+	public DateTimeOffset IngestedAt { get; set; } = DateTimeOffset.UtcNow;
+	
+	[MapperIgnore]
+	public bool Latest { get; set; } = true;
+	#endregion
+
 	[MaxLength(512)]
 	public required string InternalId { get; set; }
+	
+	[MaxLength(512)]
+	public string? Name { get; set; }
 	
 	[MaxLength(64)]
 	public string Source { get; set; } = "HypixelWiki";
@@ -45,6 +62,14 @@ public class SkyblockEnchantmentConfiguration : IEntityTypeConfiguration<Skybloc
 {
 	public void Configure(EntityTypeBuilder<SkyblockEnchantment> builder)
 	{
-		builder.HasKey(x => x.InternalId);
+		builder.HasKey(x => x.Id);
+		
+		builder.HasIndex(x => x.Name);
+		builder.HasIndex(x => x.InternalId);
+		builder.HasIndex(x => new { x.InternalId, x.Latest });
+		
+		builder.HasIndex(x => x.IngestedAt);
+		
+		builder.HasQueryFilter(x => x.Latest);
 	}
 }

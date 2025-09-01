@@ -15,9 +15,11 @@ public class SkyblockPetDto
 {
 	[MaxLength(512)]
 	public required string InternalId { get; set; }
+	public string? Name { get; set; }
 	public string Source { get; set; } = "HypixelAPI";
 	public string? Category { get; set; }
 	
+	public string Lore { get; set; } = string.Empty;
 	/// <summary>
 	/// Parsed data from the item template on the Hypixel Wiki.
 	/// </summary>

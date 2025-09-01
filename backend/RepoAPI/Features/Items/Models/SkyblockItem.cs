@@ -3,16 +3,30 @@ using System.ComponentModel.DataAnnotations.Schema;
 using HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RepoAPI.Core.Models;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Items.Models;
 
-public class SkyblockItem
+public class SkyblockItem : IVersionedEntity
 {
+	#region IVersionedEntity Implementation
+	[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+	[MapperIgnore]
+	public int Id { get; set; }
+	
+	[MapperIgnore]
+	public DateTimeOffset IngestedAt { get; set; } = DateTimeOffset.UtcNow;
+	
+	[MapperIgnore]
+	public bool Latest { get; set; } = true;
+	#endregion
+	
 	[MaxLength(512)]
 	public required string InternalId { get; set; }
+	
 	[MaxLength(512)]
 	public string? Name { get; set; }
 	
@@ -60,12 +74,25 @@ public class ItemFlags
 	public bool Enchantable { get; set; }
 	public bool Museumable { get; set; }
 	public bool Soulboundable { get; set; }
+	public bool Sackable { get; set; }
 }
 
 public class SkyblockItemConfiguration : IEntityTypeConfiguration<SkyblockItem>
 {
 	public void Configure(EntityTypeBuilder<SkyblockItem> builder)
 	{
-		builder.HasKey(x => x.InternalId);
+		builder.HasKey(x => x.Id);
+		
+		builder.HasIndex(x => x.Name);
+		builder.HasIndex(x => x.InternalId);
+		
+		// Enforce uniqueness of InternalId where Latest is true
+		builder.HasIndex(i => i.InternalId)
+			.IsUnique()
+			.HasFilter(@"""Latest"" = true");
+		
+		builder.HasIndex(x => x.IngestedAt);
+		
+		builder.HasQueryFilter(x => x.Latest);
 	}
 }

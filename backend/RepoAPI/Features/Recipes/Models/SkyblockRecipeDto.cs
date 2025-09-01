@@ -1,9 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using RepoAPI.Features.Items.Models;
-using RepoAPI.Util;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Recipes.Models;
@@ -19,15 +14,20 @@ public static partial class SkyblockRecipeMapper
 	
 	[UserMapping(Default = true)]
 	public static Dictionary<string, RecipeIngredientDto> MapIngredients(List<RecipeIngredient> ingredients) => 
-		ingredients.Where(i => i.Slot != null).ToDictionary(i => i.Slot!, i => new RecipeIngredientDto()
-		{
-			Quantity = i.Quantity,
-			ItemId = i.InternalId
-		});
+		ingredients.Where(i => i.Slot != null)
+			.OrderBy(i => i.Slot!)
+			.ToDictionary(i => i.Slot!, i => new RecipeIngredientDto() {
+				Quantity = i.Quantity,
+				ItemId = i.InternalId
+			});
 }
 
 public class SkyblockRecipeDto
 {
+	/// <summary>
+	/// Slot name of the recipe, for example "first", "second", etc.
+	/// </summary>
+	public string? Name { get; set; }
 	public RecipeType Type { get; set; } = RecipeType.Crafting;
 	
 	[MaxLength(512)]

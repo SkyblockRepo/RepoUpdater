@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Logging;
+using RepoAPI.Core;
+using RepoAPI.Features.Items.Services;
+using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
 using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 
@@ -6,7 +10,7 @@ namespace RepoAPI.Tests.Features.Wiki.Templates;
 public class ItemTemplateParserTests
 {
 	[Fact]
-	public void Parse_WithItemWikitext_ReturnsPopulatedDto()
+	public async Task Parse_WithItemWikitext_ReturnsPopulatedDto()
 	{
 		var parser = new ItemTemplateParser();
 		var complexWikitext = """
@@ -20,8 +24,7 @@ public class ItemTemplateParserTests
 		result.ShouldNotBeNull();
 		result.Name.ShouldBe("Mutant Nether Wart");
 		result.InternalId.ShouldBe("MUTANT_NETHER_STALK");
-    
-		// Verify properties are no longer cut off
+		
 		result.Image.ShouldBe("[[File:SkyBlock_items_mutant_nether_stalk.png|{{{is|25}}}px|link=Mutant Nether Wart]]");
 		result.RecipeTree?.Raw.ShouldBe("{{Recipe Tree/MUTANT_NETHER_STALK|first}}");
 		result.RecipeTree?.ItemId.ShouldBe("MUTANT_NETHER_STALK");

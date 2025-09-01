@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Humanizer;
 
@@ -232,5 +234,27 @@ public static partial class ParserUtils
         } catch {
             return defaultValue;
         }
+    }
+    
+    public static bool DeepJsonEquals(object? oldData, object? newData)
+    {
+        if (oldData == null && newData == null) return true;
+        if (oldData == null || newData == null) return false;
+        
+        var newJson = JsonNode.Parse(JsonSerializer.Serialize(newData, newData.GetType()));
+        var oldJson = JsonNode.Parse(JsonSerializer.Serialize(oldData, oldData.GetType()));
+
+        return JsonNode.DeepEquals(newJson, oldJson);
+    }
+    
+    public static bool DeepJsonEquals(string oldData, JsonNode newData)
+    {
+        var newJson = JsonNode.Parse(JsonSerializer.Serialize(oldData));
+        return JsonNode.DeepEquals(newJson, newData);
+    }
+    
+    public static bool DeepJsonEquals(JsonNode oldData, JsonNode newData)
+    {
+        return JsonNode.DeepEquals(oldData, newData);
     }
 }

@@ -2,7 +2,9 @@ using HypixelAPI;
 using Microsoft.EntityFrameworkCore;
 using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
+using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Wiki.Services;
+using RepoAPI.Features.Wiki.Templates;
 
 namespace RepoAPI.Features.Items.Services;
 
@@ -10,7 +12,8 @@ namespace RepoAPI.Features.Items.Services;
 public class ItemsIngestionService(
     IHypixelApi hypixelApi,
     DataContext context,
-    WikiDataService wikiService,
+    IWikiDataService wikiService,
+    JsonWriteQueue writeQueue,
     ILogger<ItemsIngestionService> logger) 
 {
     public async Task IngestItemsDataAsync() {
@@ -25,53 +28,99 @@ public class ItemsIngestionService(
             return;
         }
 
-        var items = apiResponse.Content.Items;
+        var itemsFromApi = apiResponse.Content.Items;
 
         var existingItems = await context.SkyblockItems
+            .AsNoTracking()
+            .Where(i => i.Latest)
+            .Include(i => i.Recipes)
             .ToDictionaryAsync(p => p.InternalId);
-        
+    
         var initializationRun = existingItems.Count == 0;
-
         var newCount = 0;
         var updatedCount = 0;
+        
+        // Use a new list for items to be added to avoid modifying the context while iterating
+        var itemsToAdd = new List<SkyblockItem>();
 
-        foreach (var item in items) {
-            if (item.Id is null) continue;
+        foreach (var apiItem in itemsFromApi) {
+            if (apiItem.Id is null) continue;
             
-            if (existingItems.TryGetValue(item.Id, out var skyblockItem)) {
-                // Update existing record
-                skyblockItem.NpcValue = item.NpcSellPrice;
-                skyblockItem.Data = item;
+            if (existingItems.TryGetValue(apiItem.Id, out var existingItem)) {
+                // Check if the item data has changed
+                if (ParserUtils.DeepJsonEquals(apiItem, existingItem.Data))
+                {
+                    // TEMPORARY TO WRITE INITIAL FILES
+                    await WriteChangesToFile(existingItem);
+                    continue;
+                }
+                
+                // Deprecate the old version
+                await context.SkyblockItems
+                    .Where(i => i.Id == existingItem.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(i => i.Latest, false));
+                    
+                // Create a new version with the updated data
+                var newVersion = new SkyblockItem {
+                    InternalId = apiItem.Id,
+                    Name = apiItem.Name ?? apiItem.Id,
+                    NpcValue = apiItem.NpcSellPrice,
+                    Data = apiItem,
+                    // Copy over data that isn't from the API, like wiki text
+                    RawTemplate = existingItem.RawTemplate,
+                    Lore = existingItem.Lore,
+                    Source = "HypixelAPI",
+                    Flags = existingItem.Flags,
+                    Category = existingItem.Category,
+                };
+                    
+                itemsToAdd.Add(newVersion);
                 updatedCount++;
-            }
-            else {
-                // Insert new record
+                
+                await WriteChangesToFile(newVersion);
+            } else {
+                // Completely new item
                 var newItem = new SkyblockItem {
-                    InternalId = item.Id,
-                    NpcValue = item.NpcSellPrice,
-                    Data = item,
+                    InternalId = apiItem.Id,
+                    Name = apiItem.Name ?? apiItem.Id,
+                    NpcValue = apiItem.NpcSellPrice,
+                    Data = apiItem,
+                    Latest = true
                 };
                 
-                newItem.Name = newItem.Data?.Name ?? newItem.InternalId;
-                
+                // Only fetch from the wiki for new items if not the first run
                 if (!initializationRun)
                 {
-                    var templateData = await wikiService.GetItemData(item.Id);
+                    var templateData = await wikiService.GetItemData(apiItem.Id);
                     newItem.PopulateTemplateData(templateData);
                 }
                 
-                context.SkyblockItems.Add(newItem);
+                itemsToAdd.Add(newItem);
                 newCount++;
+                
+                await WriteChangesToFile(newItem);
             }
+        }
+        
+        if (itemsToAdd.Count != 0) {
+            context.SkyblockItems.AddRange(itemsToAdd);
         }
 
         if (newCount > 0 || updatedCount > 0) {
             await context.SaveChangesAsync();
             logger.LogInformation(
-                "Updated Skyblock items: {NewCount} new, {UpdatedCount} updated", newCount, updatedCount);
+                "Updated Skyblock items: {NewCount} new, {UpdatedCount} updated versions", newCount, updatedCount);
         }
         else {
-            logger.LogInformation("No updated Skyblock items");
+            logger.LogInformation("No new or updated Skyblock items");
         }
+    }
+
+    private async Task WriteChangesToFile(SkyblockItem skyblockItem)
+    {
+        await writeQueue.QueueWriteAsync(new EntityWriteRequest(
+            Path: $"items/{skyblockItem.InternalId}.json",
+            Data: skyblockItem.ToOutputDto()
+        ));
     }
 }

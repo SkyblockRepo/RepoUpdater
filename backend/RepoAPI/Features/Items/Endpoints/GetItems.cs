@@ -15,7 +15,7 @@ internal class GetItemsResponse
 	public Dictionary<string, SkyblockItemDto> Items { get; set; } = new();
 }
 
-internal class GetItemsEndpoint(IItemService itemService, WikiDataService dataService) : Endpoint<GetItemsRequest, GetItemsResponse>
+internal class GetItemsEndpoint(IItemService itemService, IWikiDataService dataService) : Endpoint<GetItemsRequest, GetItemsResponse>
 {
 	public override void Configure()
 	{

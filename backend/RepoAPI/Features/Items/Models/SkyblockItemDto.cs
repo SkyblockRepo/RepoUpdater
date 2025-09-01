@@ -63,6 +63,7 @@ public static class SkyblockItemExtensions
 		item.Flags.Museumable = templateData.Data?.Museumable != "No";
 		item.Flags.Reforgeable = templateData.Data?.Reforgeable == "Yes";
 		item.Flags.Soulboundable = templateData.Data?.Soulboundable == "Yes";
+		item.Flags.Sackable = templateData.Data?.Sackable == "Yes";
 
 		var newLore = templateData.Data?.Lore ?? "";
 		if (!string.IsNullOrWhiteSpace(newLore)) {

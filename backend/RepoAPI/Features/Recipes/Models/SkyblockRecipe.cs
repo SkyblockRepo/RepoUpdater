@@ -2,20 +2,35 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RepoAPI.Core.Models;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Util;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Recipes.Models;
 
-public class SkyblockRecipe
+public class SkyblockRecipe : IVersionedEntity
 {
-	[Key]
+	#region IVersionedEntity Implementation
+	[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
 	[MapperIgnore]
-	public Guid Id { get; set; } = Guid.CreateVersion7();
+	public int Id { get; set; }
+	
+	[MapperIgnore]
+	public DateTimeOffset IngestedAt { get; set; } = DateTimeOffset.UtcNow;
+	
+	[MapperIgnore]
+	public bool Latest { get; set; } = true;
+	
+	/// <summary>
+	/// This is called "InternalId" for the versioned entity, but is just the hash of the recipe data.
+	/// This is used to determine if a recipe already exists in the database.
+	/// </summary>
+	[MaxLength(512), MapperIgnore]
+	public string InternalId { get; set; }
+	#endregion
 	
 	[MaxLength(512)]
-	[MapperIgnore]
 	public string? Name { get; set; }
 	
 	public RecipeType Type { get; set; } = RecipeType.Crafting;
@@ -26,9 +41,16 @@ public class SkyblockRecipe
 	public int ResultQuantity { get; set; } = 1;
 	
 	public List<RecipeIngredient> Ingredients { get; set; } = [];
-	
-	[MapperIgnore]
-	public required string Hash { get; set; }
+
+	/// <summary>
+	/// Hash of the recipe data, used to determine if a recipe already exists in the database.
+	/// </summary>
+	[NotMapped, MapperIgnore]
+	public string Hash
+	{
+		get => InternalId;
+		set => InternalId = value;
+	}
 }
 
 public class RecipeIngredient
@@ -37,9 +59,8 @@ public class RecipeIngredient
 	[Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
 	public int Id { get; set; }
 	
-	[MaxLength(512)]
 	[MapperIgnore]
-	public required Guid RecipeId { get; set; }
+	public int RecipeId { get; set; }
 	
 	[MaxLength(64)]
 	public string? Slot { get; set; }
@@ -58,13 +79,18 @@ public class SkyblockRecipeConfiguration : IEntityTypeConfiguration<SkyblockReci
 {
 	public void Configure(EntityTypeBuilder<SkyblockRecipe> builder)
 	{
+		builder.HasKey(x => x.Id);
+		
+		builder.HasIndex(x => x.Name);
+		builder.HasIndex(x => new { ResultInternalId = x.ResultInternalId, x.Latest });
+		
+		builder.HasIndex(x => x.IngestedAt);
+		
+		builder.HasQueryFilter(x => x.Latest);
+		
 		builder.HasIndex(r => r.Hash).IsUnique();
 		builder.HasIndex(r => r.ResultInternalId);
 		builder.HasIndex(r => r.Type);
-		
-		builder.HasOne<SkyblockItem>()
-			.WithMany(i => i.Recipes)
-			.HasForeignKey(r => r.ResultInternalId);
 		
 		builder.HasMany(r => r.Ingredients)
 			.WithOne()

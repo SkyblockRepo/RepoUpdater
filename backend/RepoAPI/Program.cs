@@ -32,8 +32,12 @@ services.AddRefitClient<IWikiApi>()
 	{
 		c.BaseAddress = new Uri("https://wiki.hypixel.net/");
 		c.DefaultRequestHeaders.Add("User-Agent", "RepoAPI");
-	});
-services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, "RepoAPI");
+		c.Timeout = TimeSpan.FromSeconds(10);
+	})
+	.AddStandardResilienceHandler();
+
+services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, "RepoAPI")
+	.AddStandardResilienceHandler();
 
 services.AddQuartz(q =>
 {
