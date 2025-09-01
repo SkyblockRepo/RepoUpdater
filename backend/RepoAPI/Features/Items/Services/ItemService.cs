@@ -2,6 +2,7 @@ using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
+using RepoAPI.Features.Recipes.Models;
 
 namespace RepoAPI.Features.Items.Services;
 
@@ -9,6 +10,7 @@ public interface IItemService
 {
 	ValueTask<SkyblockItemDto?> GetItemByIdAsync(string id, CancellationToken ct);
 	Task<List<SkyblockItemDto>> GetAllItemsAsync(CancellationToken ct, string? source = null);
+	Task<Dictionary<string, SkyblockItem>> GetItemsDictionaryAsync(CancellationToken ct, string? source = null);
 }
 
 [RegisterService<IItemService>(LifeTime.Scoped)]
@@ -34,14 +36,36 @@ public class ItemService(DataContext context, HybridCache cache, IWebHostEnviron
 
 	public async Task<List<SkyblockItemDto>> GetAllItemsAsync(CancellationToken ct, string? source = null)
 	{
+		var items = await GetItemsDictionaryAsync(ct, source);
+		return items.Values.Select(i => i.ToDto()).ToList();
+	}
+	
+	public async Task<Dictionary<string, SkyblockItem>> GetItemsDictionaryAsync(CancellationToken ct, string? source = null)
+	{
 		var query = context.SkyblockItems.AsQueryable().AsNoTracking();
 		if (!string.IsNullOrEmpty(source))
 		{
 			query = query.Where(i => i.Source == source);
 		}
-		return await query.Include(i => i.Recipes)
-			// .Where(i => i.RawTemplate == null)
-			.SelectDto()
+		
+		var items = await query
+			.AsNoTracking()
+			.ToDictionaryAsync(i => i.InternalId, ct);
+		
+		var recipes = await context.SkyblockRecipes
+			.AsNoTracking()
+			.Where(r => r.Latest && r.Type == RecipeType.Crafting)
+			.OrderBy(r => r.InternalId)
 			.ToListAsync(ct);
+		
+		foreach (var recipe in recipes)
+		{
+			if (recipe.ResultInternalId is null) continue;
+			if (!items.TryGetValue(recipe.ResultInternalId, out var item)) continue;
+			
+			item.Recipes.Add(recipe);
+		}
+
+		return items;
 	}
 }

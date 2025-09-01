@@ -2,11 +2,12 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Quartz.Util;
+using RepoAPI.Data;
 
 namespace RepoAPI.Features.Output.Services;
 
 public class JsonFileWriterService(
-	JsonWriteQueue queue, 
+	JsonWriteQueue queue,
 	ILogger<JsonFileWriterService> logger) : BackgroundService
 {
 	private readonly string _outputBasePath = GetOutputBasePath();
@@ -63,9 +64,20 @@ public class JsonFileWriterService(
 				// Write to temp file first
 				await File.WriteAllTextAsync(tempFilePath, jsonString, stoppingToken);
 
-				// Atomically move the temp file to the target location
-				File.Move(tempFilePath, filePath, overwrite: true);
+				try
+				{
+					// Atomically move the temp file to the target location
+					File.Move(tempFilePath, filePath, overwrite: true);
 
+				} catch (IOException ioEx)
+				{
+					// If the move fails, delete the temp file to avoid clutter
+					if (File.Exists(tempFilePath)) {
+						File.Delete(tempFilePath);
+					}
+					logger.LogError(ioEx, "Failed to move temp file to {FilePath}", filePath);
+				}
+				
 				logger.LogDebug("Wrote file: {FilePath}", filePath);
 			}
 			catch (Exception ex)

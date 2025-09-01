@@ -10,7 +10,7 @@ namespace RepoAPI.Tests.Features.Wiki.Templates;
 public class ItemTemplateParserTests
 {
 	[Fact]
-	public async Task Parse_WithItemWikitext_ReturnsPopulatedDto()
+	public void Parse_WithItemWikitext_ReturnsPopulatedDto()
 	{
 		var parser = new ItemTemplateParser();
 		var complexWikitext = """

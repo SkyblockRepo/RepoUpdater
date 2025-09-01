@@ -11,6 +11,7 @@ namespace RepoAPI.Features.Items.Services;
 [RegisterService<ItemsIngestionService>(LifeTime.Scoped)]
 public class ItemsIngestionService(
     IHypixelApi hypixelApi,
+    IItemService itemService,
     DataContext context,
     IWikiDataService wikiService,
     JsonWriteQueue writeQueue,
@@ -30,12 +31,8 @@ public class ItemsIngestionService(
 
         var itemsFromApi = apiResponse.Content.Items;
 
-        var existingItems = await context.SkyblockItems
-            .AsNoTracking()
-            .Where(i => i.Latest)
-            .Include(i => i.Recipes)
-            .ToDictionaryAsync(p => p.InternalId);
-    
+        var existingItems = await itemService.GetItemsDictionaryAsync(CancellationToken.None);
+        
         var initializationRun = existingItems.Count == 0;
         var newCount = 0;
         var updatedCount = 0;
