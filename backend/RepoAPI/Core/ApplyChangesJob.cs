@@ -5,10 +5,11 @@ using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Recipes.Models;
+using RepoAPI.Util;
 
 namespace RepoAPI.Core;
 
-public class ApplyChangesJob(IServiceProvider serviceProvider, ILogger<ApplyChangesJob> logger) : BackgroundService
+public class ApplyChangesJob(IServiceProvider serviceProvider, ILogger<ApplyChangesJob> logger) : BackgroundService, ISelfRegister
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -116,5 +117,10 @@ public class ApplyChangesJob(IServiceProvider serviceProvider, ILogger<ApplyChan
             logger.LogError(ex, "Failed to process batch {BatchId}. Rolling back.", batch.Id);
             await transaction.RollbackAsync(ct);
         }
+    }
+
+    public static void Configure(IServiceCollection services, ConfigurationManager config)
+    {
+        services.AddHostedService<ApplyChangesJob>();
     }
 }

@@ -2,13 +2,13 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Quartz.Util;
-using RepoAPI.Data;
+using RepoAPI.Util;
 
 namespace RepoAPI.Features.Output.Services;
 
 public class JsonFileWriterService(
 	JsonWriteQueue queue,
-	ILogger<JsonFileWriterService> logger) : BackgroundService
+	ILogger<JsonFileWriterService> logger) : BackgroundService, ISelfRegister
 {
 	private readonly string _outputBasePath = GetOutputBasePath();
 	private readonly string _overridesBasePath = Path.Combine(GetOutputBasePath(), "..", "overrides");
@@ -51,7 +51,7 @@ public class JsonFileWriterService(
 
 					if (finalNode != null && overrideNode != null)
 					{
-						MergeInto(finalNode, overrideNode);
+						JsonUtils.MergeInto(finalNode, overrideNode);
 					}
 				}
 
@@ -93,28 +93,6 @@ public class JsonFileWriterService(
 		return string.Concat(fileName.Select(c => invalidChars.Contains(c) ? '-' : c));
 	}
 	
-	private void MergeInto(JsonNode baseNode, JsonNode overrideNode)
-	{
-		if (baseNode is not JsonObject baseObj || overrideNode is not JsonObject overrideObj)
-		{
-			return;
-		}
-
-		// Loop through all properties in the override file
-		foreach (var property in overrideObj)
-		{
-			// Recursively merge if both properties are JSON objects
-			if (baseObj.ContainsKey(property.Key) &&
-			    baseObj[property.Key] is JsonObject baseChild &&
-			    property.Value is JsonObject overrideChild)
-			{
-				MergeInto(baseChild, overrideChild);
-			} else {
-				baseObj[property.Key] = property.Value?.DeepClone();
-			}
-		}
-	}
-	
 	private static string GetOutputBasePath()
 	{
 		var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -132,5 +110,10 @@ public class JsonFileWriterService(
 		return currentDir != null 
 			? Path.Combine(currentDir.FullName, "..", "output") 
 			: Path.Combine(AppContext.BaseDirectory, "..", "output");
+	}
+	
+	public static void Configure(IServiceCollection services, ConfigurationManager config)
+	{
+		services.AddHostedService<JsonFileWriterService>();
 	}
 }

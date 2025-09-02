@@ -21,6 +21,8 @@ services.AddSwaggerDocumentation();
 
 services.AddDatabaseConfiguration();
 services.RegisterServicesFromRepoAPI();
+services.AddSelfConfiguringServices(builder.Configuration);
+
 services.Configure<JsonOptions>(o =>
 {
 	o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
