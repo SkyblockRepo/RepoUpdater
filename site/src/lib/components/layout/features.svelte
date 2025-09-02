@@ -37,11 +37,11 @@
 						<Settings2 class="size-6" aria-hidden />
 					</CardDecorator>
 
-					<h3 class="mt-6 text-lg font-semibold">Customizable</h3>
+					<h3 class="mt-6 text-lg font-semibold">Comprehensive</h3>
 				</CardHeader>
 
 				<CardContent>
-					<p class="text-sm">Customize every aspect of your integration of Skyblock Repo.</p>
+					<p class="text-sm">Should contain all data you need for your application!</p>
 				</CardContent>
 			</Card>
 
@@ -55,7 +55,7 @@
 				</CardHeader>
 
 				<CardContent>
-					<p class="text-sm">We're not insane.</p>
+					<p class="text-sm">You're welcome!</p>
 				</CardContent>
 			</Card>
 		</div>

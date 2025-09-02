@@ -5,7 +5,7 @@ on:
     paths:
       - "site/**"
     branches:
-      - prod
+      - main
 
 jobs:
   install:
@@ -47,6 +47,13 @@ jobs:
         with:
           path: site/node_modules
           key: ${{ runner.os }}-node-modules-${{ hashFiles('site/pnpm-lock.yaml') }}
+
+      - name: Create .env file
+        working-directory: ./site
+        run: |
+          echo "ORIGIN=https://skyblockrepo.com" > .env
+          echo "PUBLIC_HOST_URL=https://skyblockrepo.com" >> .env
+          echo "PUBLIC_COMMIT_HASH=${GITHUB_SHA::7}" >> .env
 
       - name: Build
         working-directory: ./site

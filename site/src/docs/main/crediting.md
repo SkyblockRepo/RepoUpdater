@@ -1,5 +1,5 @@
 ---
-title: Credits
+title: Crediting
 date: 2025-08-21
 category: main
 author: Kaeso
