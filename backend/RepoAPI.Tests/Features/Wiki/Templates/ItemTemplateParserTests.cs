@@ -1,9 +1,5 @@
-using Microsoft.Extensions.Logging;
-using RepoAPI.Core;
-using RepoAPI.Features.Items.Services;
-using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
+using RepoAPI.Features.Items.ItemTemplate;
 
 namespace RepoAPI.Tests.Features.Wiki.Templates;
 

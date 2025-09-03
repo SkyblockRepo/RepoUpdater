@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RepoAPI.Core.Models;
-using RepoAPI.Features.Wiki.Templates.PetTemplate;
+using RepoAPI.Features.Pets.PetTemplate;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Pets.Models;
@@ -40,11 +40,8 @@ public class SkyblockPet : IVersionedEntity
 	[MapperIgnore]
 	public string? RawTemplate { get; set; }
 	
-	/// <summary>
-	/// Parsed data from the pet template on the Hypixel Wiki.
-	/// </summary>
-	[Column(TypeName = "jsonb")]
-	public PetTemplateDto? TemplateData { get; set; }
+	[NotMapped]
+	public PetTemplateDto? TemplateData => RawTemplate == null ? null : new PetTemplateParser().Parse(RawTemplate);
 }
 
 public class SkyblockPetConfiguration : IEntityTypeConfiguration<SkyblockPet>

@@ -5,8 +5,14 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace RepoAPI.Features.Pets.Services;
 
-[RegisterService<PetService>(LifeTime.Scoped)]
-public class PetService(DataContext context, HybridCache cache)
+public interface IPetService
+{
+	ValueTask<SkyblockPet?> GetPetByIdAsync(string id, CancellationToken ct);
+	Task<List<SkyblockPetDto>> GetAllPetsAsync(CancellationToken ct, string? source = null);
+}
+
+[RegisterService<IPetService>(LifeTime.Scoped)]
+public class PetService(DataContext context, HybridCache cache) : IPetService
 {
 	public ValueTask<SkyblockPet?> GetPetByIdAsync(string id, CancellationToken ct) =>
 		cache.GetOrCreateAsync(

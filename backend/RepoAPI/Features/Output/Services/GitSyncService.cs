@@ -3,13 +3,16 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
+using Octokit;
 using RepoAPI.Util;
 
 namespace RepoAPI.Features.Output.Services;
 
 public class GitSyncService(
     ILogger<GitSyncService> logger,
-    IOptions<GitSyncOptions> gitSyncOptions
+    IOptions<GitSyncOptions> gitSyncOptions,
+    IServiceProvider serviceProvider,
+    JsonWriteQueue jsonWriteQueue
 ) : BackgroundService, ISelfRegister
 {
     private readonly GitSyncOptions _config = gitSyncOptions.Value;
@@ -23,48 +26,7 @@ public class GitSyncService(
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        logger.LogInformation("Git Sync Service started.");
-        
-        // Run initial sync on startup to ensure new overrides are applied
-        await ApplyOverridesAsync(stoppingToken);
-        ApplyExclusions();
-        CopyManifest();
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                if (!await HasChangesAsync()) continue;
-                
-                logger.LogInformation("Detected changes in output folder. Applying overrides...");
-
-                await ApplyOverridesAsync(stoppingToken);
-                ApplyExclusions();
-                CopyManifest();
-
-                if (await HasChangesAsync())
-                {
-                    await CommitAndPushAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Git sync failed");
-            }
-
-            await Task.Delay(_interval, stoppingToken);
-        }
-    }
-
-    private async Task<bool> HasChangesAsync()
-    {
-        var (exitCode, output) = await RunGitAsync("status --porcelain", _outputBasePath);
-        return exitCode == 0 && !string.IsNullOrWhiteSpace(output);
-    }
-
+    
     private async Task ApplyOverridesAsync(CancellationToken token)
     {
         foreach (var file in Directory.EnumerateFiles(_overridesBasePath, "*.json", SearchOption.AllDirectories))
@@ -136,45 +98,123 @@ public class GitSyncService(
         }
     }
 
-    private async Task CommitAndPushAsync()
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // set commit author
-        await RunGitAsync($"config user.name \"{_config.UserName}\"", _outputBasePath);
-        await RunGitAsync($"config user.email \"{_config.UserEmail}\"", _outputBasePath);
+        await Task.Delay(TimeSpan.FromSeconds(45), stoppingToken); // Initial delay to allow other services to start
+        logger.LogInformation("Git Sync Service started.");
         
-        if (!string.IsNullOrWhiteSpace(_config.PersonalAccessToken) &&
-            !string.IsNullOrWhiteSpace(_config.RepositoryUrl))
+        while (!stoppingToken.IsCancellationRequested)
         {
-            var patUrl = _config.RepositoryUrl.Replace(
-                "https://",
-                $"https://x-access-token:{_config.PersonalAccessToken}@");
+            if (!jsonWriteQueue.IsEmpty) {
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                continue; // Wait until the write queue is empty before proceeding
+            }
+            
+            using var scope = serviceProvider.CreateScope();
+            
+            var scopedServiceProvider = scope.ServiceProvider;
+            var gitHubClient = scopedServiceProvider.GetRequiredService<IGitHubClient>();
 
-            await RunGitAsync($"remote set-url origin {patUrl}", _outputBasePath);
+            try {
+                await ApplyOverridesAsync(stoppingToken);
+                ApplyExclusions();
+                CopyManifest();
+                
+                await CommitAndPushAsync(gitHubClient);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred during the git sync cycle.");
+            }
+
+            await Task.Delay(_interval, stoppingToken);
+        }
+    }
+    
+    private async Task CommitAndPushAsync(IGitHubClient client)
+    {
+        var branch = _config.TargetBranch;
+        
+        var botName = $"{_config.AppName}[bot]";
+        var botEmail = $"{_config.AppId}+{_config.AppName}[bot]@users.noreply.github.com";
+        await RunGitAsync($"config user.name \"{botName}\"", _outputBasePath);
+        await RunGitAsync($"config user.email \"{botEmail}\"", _outputBasePath);
+
+        // Prepare the branch
+        await RunGitAsync("fetch origin", _outputBasePath);
+        await RunGitAsync($"checkout -t origin/{branch}", _outputBasePath);
+        
+        var (branchExistsCode, _) = await RunGitAsync($"show-branch {branch}", _outputBasePath);
+        if (branchExistsCode != 0)
+        {
+            await RunGitAsync($"checkout -b {branch} origin/main", _outputBasePath);
         }
         
-        var branch = string.IsNullOrWhiteSpace(_config.Branch) ? "main" : _config.Branch;
-        await RunGitAsync($"checkout {branch}", _outputBasePath);
-        
-        await RunGitAsync("fetch origin", _outputBasePath);
-        await RunGitAsync("rebase origin/main", _outputBasePath); 
+        await RunGitAsync("rebase origin/main", _outputBasePath);
 
         await RunGitAsync("add .", _outputBasePath);
 
-        if (!_config.PushEnabled) {
-            logger.LogInformation("Push is disabled in configuration. Skipping commit and push.");
-            return;
-        }
-        
-        var (exit, _) = await RunGitAsync($"commit -m \"Automated sync {DateTime.UtcNow:O}\"", _outputBasePath);
-        if (exit != 0)
+        if (!_config.PushEnabled)
         {
-            logger.LogInformation("No new changes to commit.");
+            logger.LogInformation("Push is disabled. Skipping commit and push.");
             return;
         }
-        
-        await RunGitAsync("push origin HEAD", _outputBasePath);
 
-        logger.LogInformation("Committed and pushed changes to git submodule as {UserName}.", _config.UserName);
+        var (commitExitCode, _) = await RunGitAsync($"commit -m \"Automated Sync {DateTime.UtcNow:O}\"", _outputBasePath);
+        if (commitExitCode != 0)
+        {
+            logger.LogInformation("Commit failed or there were no changes to commit.");
+            return;
+        }
+
+        // Force push is required because we reset the branch history in the checkout step
+        var (pushExitCode, pushOutput) = await RunGitAsync($"push --force-with-lease origin {branch}", _outputBasePath);
+
+        if (pushExitCode == 0)
+        {
+            logger.LogInformation("Successfully pushed changes to branch '{Branch}'.", branch);
+            await CreatePullRequestIfNeededAsync(client, branch, _config.MainBranch);
+        }
+        else
+        {
+            logger.LogError("Failed to push changes. Exit: {Code}, Output: {Output}", pushExitCode, pushOutput);
+        }
+    }
+
+    private async Task CreatePullRequestIfNeededAsync(IGitHubClient client, string sourceBranch, string targetBranch)
+    {
+        try
+        {
+            var uri = new Uri(_config.RepositoryUrl);
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+            var owner = segments[0];
+            var repoName = segments[1].Replace(".git", "");
+            
+            var pullRequests = await client.PullRequest.GetAllForRepository(owner, repoName, new PullRequestRequest
+            {
+                State = ItemStateFilter.Open,
+                Head = $"{owner}:{sourceBranch}",
+                Base = targetBranch
+            });
+            
+            if (pullRequests.Count > 0)
+            {
+                logger.LogInformation("An open pull request already exists for branch '{Branch}'. Skipping creation.", sourceBranch);
+                return;
+            }
+
+            var newPullRequest = new NewPullRequest($"Automated Sync: {sourceBranch}", sourceBranch, targetBranch)
+            {
+                Body = $"Automated changes synced at `{DateTime.UtcNow:F}`. Please review and merge."
+            };
+            
+            var createdPullRequest = await client.PullRequest.Create(owner, repoName, newPullRequest);
+            logger.LogInformation("Successfully created pull request #{Number}: {Url}", createdPullRequest.Number, createdPullRequest.HtmlUrl);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create pull request for branch {Branch}", sourceBranch);
+        }
     }
 
     private static async Task<(int ExitCode, string Output)> RunGitAsync(string arguments, string workingDir)
@@ -225,9 +265,11 @@ public class GitSyncService(
 public class GitSyncOptions
 {
     public bool PushEnabled { get; set; } = false;
-    public string UserName { get; set; } = "github-actions[bot]";
-    public string UserEmail { get; set; } = "41898282+github-actions[bot]@users.noreply.github.com";
-    public string? PersonalAccessToken { get; set; }
     public string RepositoryUrl { get; set; } = string.Empty;
-    public string Branch { get; set; } = "main";
+    public string AppName { get; set; } = string.Empty;
+    public long AppId { get; set; }
+    public string TargetBranch { get; set; } = "automated-sync";
+    public string MainBranch { get; set; } = "main";
+    public string? PrivateKeyPath { get; set; } // Path to your .pem file
+    public string? PrivateKey { get; set; } // Or the key content directly
 }

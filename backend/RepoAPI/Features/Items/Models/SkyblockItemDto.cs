@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using HypixelAPI.DTOs;
+using RepoAPI.Features.Items.ItemTemplate;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Items.Models;
@@ -56,14 +56,19 @@ public static class SkyblockItemExtensions
 		// item.TemplateData = templateData.Data;
 		item.RawTemplate = templateData.Wikitext;
 
-		item.Flags.Tradable = templateData.Data?.Tradable == "Yes";
-		item.Flags.Auctionable = templateData.Data?.Auctionable == "Yes";
-		item.Flags.Bazaarable = templateData.Data?.Bazaarable == "Yes";
-		item.Flags.Enchantable = templateData.Data?.Enchantable == "Yes";
-		item.Flags.Museumable = templateData.Data?.Museumable is not null && templateData.Data.Museumable != "No";
-		item.Flags.Reforgeable = templateData.Data?.Reforgeable == "Yes";
-		item.Flags.Soulboundable = templateData.Data?.Soulboundable == "Yes";
-		item.Flags.Sackable = templateData.Data?.Sackable == "Yes";
+		item.Flags = new ItemFlags()
+		{
+			Tradable = templateData.Data?.Tradable?.Contains("Yes") is true,
+			Auctionable = templateData.Data?.Auctionable?.Contains("Yes") is true,
+			Bazaarable = templateData.Data?.Bazaarable?.Contains("Yes") is true,
+			Enchantable = templateData.Data?.Enchantable?.Contains("Yes") is true,
+			Museumable = templateData.Data?.Museumable is not null && !templateData.Data.Museumable.Contains("No"),
+			Reforgeable = templateData.Data?.Reforgeable?.Contains("Yes") is true,
+			Soulboundable = templateData.Data?.Soulboundable?.Contains("Yes") is true,
+			Sackable = templateData.Data?.Sackable?.Contains("Yes") is true,
+		};
+		
+		item.Category = templateData.Data?.Category ?? item.Category;
 
 		var newLore = templateData.Data?.Lore ?? "";
 		if (!string.IsNullOrWhiteSpace(newLore)) {

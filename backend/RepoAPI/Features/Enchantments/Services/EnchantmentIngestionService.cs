@@ -60,6 +60,8 @@ public class EnchantmentIngestionService(
 				enchant.RawTemplate = templateData.Wikitext;
 				var baseName = templateData.Data?.AdditionalProperties.GetValueOrDefault("base_name")?.ToString() ?? enchant.InternalId;
 				
+				enchant.Name = baseName;
+				
 				var minLevel = templateData.Data?.AdditionalProperties.GetValueOrDefault("minimum_level");
 				if (int.TryParse(minLevel?.ToString(), out var minLevelValue))
 				{
@@ -85,6 +87,7 @@ public class EnchantmentIngestionService(
 				{
 					var item = await context.SkyblockItems.FirstOrDefaultAsync(it => it.InternalId == itemId, ct);
 					var level = itemId.Split('_').LastOrDefault();
+					var name = baseName + " " + level.ToRomanOrDefault();
 					
 					if (item is null)
 					{
@@ -95,10 +98,12 @@ public class EnchantmentIngestionService(
 							NpcValue = 0,
 						};
 						
+						logger.LogInformation("Added {name} item for {Enchantment}", name, enchantId);
+						
 						context.SkyblockItems.Add(item);
 					}
 
-					item.Name = baseName + " " + level.ToRomanOrDefault();
+					item.Name = name;
 					item.Flags = new ItemFlags()
 					{
 						Tradable = templateData.Data?.Tradable == "Yes",
@@ -109,7 +114,7 @@ public class EnchantmentIngestionService(
 						Reforgeable = templateData.Data?.Reforgeable == "Yes",
 						Soulboundable = templateData.Data?.Soulboundable == "Yes",
 						Sackable = templateData.Data?.Sackable == "Yes"
-					};;
+					};
 					
 					if (level != null && int.TryParse(level, out var levelValue))
 					{
@@ -125,8 +130,6 @@ public class EnchantmentIngestionService(
 				await WriteEnchantmentChangesToFile(enchant);
 				
 				await context.SaveChangesAsync(ct);
-				
-				logger.LogInformation("Added {ItemCount} items for {Enchantment}", enchantedBookItems.Count, enchantId);
 			}
 			
 			// Wait for a moment to avoid hitting rate limits/overloading the wiki API

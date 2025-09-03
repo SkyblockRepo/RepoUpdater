@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
+using RepoAPI.Features.Wiki.Templates;
 
-namespace RepoAPI.Features.Wiki.Templates.ItemTemplate;
+namespace RepoAPI.Features.Items.ItemTemplate;
 
 [RegisterService<ITemplateParser<ItemTemplateDto>>(LifeTime.Singleton)]
 public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>

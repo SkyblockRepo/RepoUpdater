@@ -13,7 +13,7 @@ internal class GetPetResponse
 	public SkyblockPet? Pet { get; set; }
 }
 
-internal class GetPetEndpoint(PetService itemService) : Endpoint<GetPetRequest, GetPetResponse>
+internal class GetPetEndpoint(IPetService itemService) : Endpoint<GetPetRequest, GetPetResponse>
 {
 	public override void Configure()
 	{

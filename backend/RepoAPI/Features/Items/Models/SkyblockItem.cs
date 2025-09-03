@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RepoAPI.Core.Models;
+using RepoAPI.Features.Items.ItemTemplate;
 using RepoAPI.Features.Recipes.Models;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
+using ItemTemplateParser = RepoAPI.Features.Items.ItemTemplate.ItemTemplateParser;
 
 namespace RepoAPI.Features.Items.Models;
 
@@ -35,6 +37,7 @@ public class SkyblockItem : IVersionedEntity
 	
 	public double NpcValue { get; set; }
 	
+	[Column(TypeName = "jsonb")]
 	public ItemFlags Flags { get; set; } = new();
 	
 	[MaxLength(64)]
@@ -64,8 +67,7 @@ public class SkyblockItem : IVersionedEntity
 	public List<SkyblockRecipe> Recipes { get; set; } = [];
 }
 
-[Owned]
-public class ItemFlags
+public record struct ItemFlags()
 {
 	public bool Tradable { get; set; }
 	public bool Bazaarable { get; set; }
@@ -75,6 +77,9 @@ public class ItemFlags
 	public bool Museumable { get; set; }
 	public bool Soulboundable { get; set; }
 	public bool Sackable { get; set; }
+	
+	[JsonExtensionData]
+	public SortedDictionary<string, object> Other { get; set; } = new();
 }
 
 public class SkyblockItemConfiguration : IEntityTypeConfiguration<SkyblockItem>

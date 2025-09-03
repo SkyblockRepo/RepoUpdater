@@ -1,5 +1,6 @@
 using HypixelAPI;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Output.Services;
@@ -15,8 +16,12 @@ public class ItemsIngestionService(
     DataContext context,
     IWikiDataService wikiService,
     JsonWriteQueue writeQueue,
+    WikiItemsIngestionService wikiItemsIngestionService,
+    HybridCache hybridCache,
     ILogger<ItemsIngestionService> logger) 
 {
+    private static DateTimeOffset LastWikiFetch = DateTimeOffset.MinValue;
+    
     public async Task IngestItemsDataAsync() {
         var apiResponse = await hypixelApi.FetchItems();
         
@@ -103,21 +108,39 @@ public class ItemsIngestionService(
             context.SkyblockItems.AddRange(itemsToAdd);
         }
 
+        await context.SaveChangesAsync();
+        
         if (newCount > 0 || updatedCount > 0) {
-            await context.SaveChangesAsync();
             logger.LogInformation(
                 "Updated Skyblock items: {NewCount} new, {UpdatedCount} updated versions", newCount, updatedCount);
         }
         else {
             logger.LogInformation("No new or updated Skyblock items");
         }
+        
+        await hybridCache.GetOrCreateAsync(
+            "wiki-items-exist",
+            async c => {
+                try {
+                    await wikiItemsIngestionService.IngestItemsDataAsync(c);
+                    return true;
+                } catch {
+                    return false;
+                }
+            },
+            options: new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromMinutes(10),
+                LocalCacheExpiration = TimeSpan.FromMinutes(10)
+            });
     }
 
     private async Task WriteChangesToFile(SkyblockItem skyblockItem)
     {
         await writeQueue.QueueWriteAsync(new EntityWriteRequest(
             Path: $"items/{skyblockItem.InternalId}.json",
-            Data: skyblockItem.ToOutputDto()
+            Data: skyblockItem.ToOutputDto(),
+            KeepProperties: [ "recipes" ]
         ));
     }
 }

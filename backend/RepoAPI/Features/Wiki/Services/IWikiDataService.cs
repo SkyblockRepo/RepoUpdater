@@ -1,8 +1,9 @@
+using RepoAPI.Features.Items.ItemTemplate;
+using RepoAPI.Features.Pets.PetTemplate;
 using RepoAPI.Features.Wiki.Templates;
 using RepoAPI.Features.Wiki.Templates.AttributeList;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
-using RepoAPI.Features.Wiki.Templates.PetTemplate;
 using RepoAPI.Features.Wiki.Templates.RecipeTemplate;
+
 namespace RepoAPI.Features.Wiki.Services;
 
 public record WikiTemplateData<T>(T? Data, string Wikitext);

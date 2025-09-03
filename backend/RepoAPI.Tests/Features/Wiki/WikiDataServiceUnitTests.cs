@@ -1,9 +1,6 @@
 using NSubstitute;
 using RepoAPI.Features.Wiki.Responses;
 using RepoAPI.Features.Wiki.Services;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
-using RepoAPI.Features.Wiki.Templates.PetTemplate;
-using RepoAPI.Features.Wiki.Templates.RecipeTemplate;
 
 namespace RepoAPI.Tests.Features.Wiki;
 

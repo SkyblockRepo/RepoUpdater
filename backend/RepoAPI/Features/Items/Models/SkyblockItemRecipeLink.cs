@@ -1,11 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using RepoAPI.Features.Recipes.Models;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
-using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Items.Models;
 

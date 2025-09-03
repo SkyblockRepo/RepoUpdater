@@ -8,14 +8,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RepoAPI.Data;
-using RepoAPI.Features.Wiki.Templates.PetTemplate;
+using RepoAPI.Features.Items.Models;
 
 #nullable disable
 
 namespace RepoAPI.Data.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250901013632_Initial")]
+    [Migration("20250903172253_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -168,6 +168,10 @@ namespace RepoAPI.Data.Migrations
                     b.Property<ItemResponse>("Data")
                         .HasColumnType("jsonb");
 
+                    b.Property<ItemFlags>("Flags")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.Property<DateTimeOffset>("IngestedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -265,9 +269,6 @@ namespace RepoAPI.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
-
-                    b.Property<PetTemplateDto>("TemplateData")
-                        .HasColumnType("jsonb");
 
                     b.HasKey("Id");
 
@@ -387,49 +388,6 @@ namespace RepoAPI.Data.Migrations
                         .WithMany("PendingChanges")
                         .HasForeignKey("BatchId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("RepoAPI.Features.Items.Models.SkyblockItem", b =>
-                {
-                    b.OwnsOne("RepoAPI.Features.Items.Models.ItemFlags", "Flags", b1 =>
-                        {
-                            b1.Property<int>("SkyblockItemId")
-                                .HasColumnType("integer");
-
-                            b1.Property<bool>("Auctionable")
-                                .HasColumnType("boolean");
-
-                            b1.Property<bool>("Bazaarable")
-                                .HasColumnType("boolean");
-
-                            b1.Property<bool>("Enchantable")
-                                .HasColumnType("boolean");
-
-                            b1.Property<bool>("Museumable")
-                                .HasColumnType("boolean");
-
-                            b1.Property<bool>("Reforgeable")
-                                .HasColumnType("boolean");
-
-                            b1.Property<bool>("Sackable")
-                                .HasColumnType("boolean");
-
-                            b1.Property<bool>("Soulboundable")
-                                .HasColumnType("boolean");
-
-                            b1.Property<bool>("Tradable")
-                                .HasColumnType("boolean");
-
-                            b1.HasKey("SkyblockItemId");
-
-                            b1.ToTable("SkyblockItems");
-
-                            b1.WithOwner()
-                                .HasForeignKey("SkyblockItemId");
-                        });
-
-                    b.Navigation("Flags")
                         .IsRequired();
                 });
 

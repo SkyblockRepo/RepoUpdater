@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RepoAPI.Core.Models;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
+using RepoAPI.Features.Items.ItemTemplate;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Enchantments.Models;

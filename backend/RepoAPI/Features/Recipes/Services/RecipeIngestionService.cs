@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RepoAPI.Core.Models;
 using RepoAPI.Core.Services;
 using RepoAPI.Data;
+using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates.RecipeTemplate;
@@ -13,10 +14,11 @@ namespace RepoAPI.Features.Recipes.Services;
 public class RecipeIngestionService(
 	DataContext context,
 	IWikiDataService wikiDataService,
-	ILogger<RecipeIngestionService> logger
+	ILogger<RecipeIngestionService> logger,
+	JsonWriteQueue writeQueue
 ) : IDataLoader
 {
-	const int ChangeThreshold = 20;
+	// const int ChangeThreshold = 20;
 	
 	public Task InitializeAsync(CancellationToken ct = default)
 	{
@@ -41,20 +43,21 @@ public class RecipeIngestionService(
 		var newVersions = new List<IVersionedEntity>();
 		var deprecationIds = new List<int>();
 
-		foreach (var dto in allRecipes)
+		foreach (var craftingRecipe in allRecipes)
 		{
-			var hash = dto.Hash;
+			var hash = craftingRecipe.Hash;
+			var entity = MapToEntity(craftingRecipe, hash);
 			if (existingRecipes.TryGetValue(hash, out var existingRecipe))
 			{
 				if (existingRecipe.Hash != hash)
 				{
-					newVersions.Add(MapToEntity(dto, hash));
+					newVersions.Add(entity);
 					deprecationIds.Add(existingRecipe.Id);
 				}
 			}
 			else
 			{
-				newVersions.Add(MapToEntity(dto, hash));
+				newVersions.Add(entity);
 			}
 		}
 
@@ -63,43 +66,63 @@ public class RecipeIngestionService(
 			logger.LogInformation("No new or updated wiki recipes found.");
 			return;
 		}
-
-		var batch = new DataIngestionBatch
+		
+		var transaction = await context.Database.BeginTransactionAsync(ct);
+		try
 		{
-			Source = "HypixelWikiRecipes",
-			Status = IngestionStatus.InProgress
-		};
-		context.DataIngestionBatches.Add(batch);
-		await context.SaveChangesAsync(ct);
-
-		// Create the pending change objects using the batch.Id
-		var pendingChanges = newVersions
-			.Select(v => CreatePendingChange(batch.Id, "SkyblockRecipe", v))
-			.ToList();
-    
-		var pendingDeprecations = deprecationIds
-			.Select(id => new PendingDeprecation { BatchId = batch.Id, EntityIdToDeprecate = id, EntityType = "SkyblockRecipe" })
-			.ToList();
-
-		context.PendingEntityChanges.AddRange(pendingChanges);
-		context.PendingDeprecations.AddRange(pendingDeprecations);
-
-		if (pendingChanges.Count > ChangeThreshold)
+			await context.Database.ExecuteSqlAsync(
+				$"UPDATE \"SkyblockRecipes\" SET \"Latest\" = false WHERE \"Id\" = ANY({deprecationIds})",
+				ct);
+		
+			await context.SkyblockRecipes.AddRangeAsync(newVersions.OfType<SkyblockRecipe>(), ct);
+			await context.SaveChangesAsync(ct);
+		
+			await transaction.CommitAsync(ct);
+		} catch (Exception ex)
 		{
-			batch.Status = IngestionStatus.PendingApproval;
-			logger.LogWarning("{Count} recipe changes detected, requires manual approval.", pendingChanges.Count);
-			// TODO: Trigger alert system here with batch.Id
-		}
-		else
-		{
-			batch.Status = IngestionStatus.Approved;
-			logger.LogInformation("{Count} recipe changes detected, auto-approved for processing.",
-				pendingChanges.Count);
+			logger.LogError(ex, "Error during recipe ingestion transaction.");
+			await transaction.RollbackAsync(ct);
+			throw;
 		}
 
+
+		// var batch = new DataIngestionBatch
+		// {
+		// 	Source = "HypixelWikiRecipes",
+		// 	Status = IngestionStatus.InProgress
+		// };
+		// context.DataIngestionBatches.Add(batch);
+		
+		await WriteChangesToFiles(newVersions.OfType<SkyblockRecipe>().ToList());
+
+		// // Create the pending change objects using the batch.Id
+		// var pendingChanges = newVersions
+		// 	.Select(v => CreatePendingChange(batch.Id, "SkyblockRecipe", v))
+		// 	.ToList();
+		//   
+		// var pendingDeprecations = deprecationIds
+		// 	.Select(id => new PendingDeprecation { BatchId = batch.Id, EntityIdToDeprecate = id, EntityType = "SkyblockRecipe" })
+		// 	.ToList();
+		//
+		// context.PendingEntityChanges.AddRange(pendingChanges);
+		// context.PendingDeprecations.AddRange(pendingDeprecations);
+		//
+		// if (pendingChanges.Count > ChangeThreshold)
+		// {
+		// 	batch.Status = IngestionStatus.PendingApproval;
+		// 	logger.LogWarning("{Count} recipe changes detected, requires manual approval.", pendingChanges.Count);
+		// 	// TODO: Trigger alert system here with batch.Id
+		// }
+		// else
+		// {
+		// 	batch.Status = IngestionStatus.Approved;
+		// 	logger.LogInformation("{Count} recipe changes detected, auto-approved for processing.",
+		// 		pendingChanges.Count);
+		// }
+
 		await context.SaveChangesAsync(ct);
-		logger.LogInformation("Wiki recipe ingestion complete. Batch ID: {BatchId} is now '{Status}'.", batch.Id,
-			batch.Status);
+		logger.LogInformation("{Count} recipe changes detected, auto-approved for processing.",
+			newVersions.Count);
 	}
 
 	/// <summary>
@@ -159,5 +182,23 @@ public class RecipeIngestionService(
 			InternalId = entity.InternalId,
 			EntityData = JsonSerializer.SerializeToDocument(entity, entity.GetType())
 		};
+	}
+	
+	private async Task WriteChangesToFiles(List<SkyblockRecipe> recipes)
+	{
+		var groupedByItem = recipes
+			.Select(r => r.ToDto())
+			.Where(r => r.ResultId != null)
+			.GroupBy(r => r.ResultId!)
+			.ToDictionary(g => g.Key, g => g.ToList());
+
+		foreach (var (itemId, value) in groupedByItem)
+		{
+			await writeQueue.QueueWriteAsync(new EntityWriteRequest(
+				Path: $"items/{itemId}.json",
+				Data: new { recipes = value },
+				MergeInto: true
+			));
+		}
 	}
 }

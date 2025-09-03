@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace RepoAPI.Features.Wiki.Templates.ItemTemplate;
+namespace RepoAPI.Features.Items.ItemTemplate;
 
 /// <summary>
 /// Represents the parsed data from a Hypixel SkyBlock Item template.
@@ -167,7 +167,7 @@ public class ItemTemplateDto
 	public string? Sources { get; set; }
 	
 	[JsonExtensionData]
-	public Dictionary<string, object> AdditionalProperties { get; set; } = new();
+	public SortedDictionary<string, object> AdditionalProperties { get; set; } = new();
 }
 
 public class ItemTemplateRecipeTreeDto

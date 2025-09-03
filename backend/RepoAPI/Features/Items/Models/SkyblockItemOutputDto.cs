@@ -2,9 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using HypixelAPI.DTOs;
 using RepoAPI.Features.Recipes.Models;
-using RepoAPI.Features.Wiki.Services;
-using RepoAPI.Features.Wiki.Templates;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Items.Models;
@@ -38,8 +35,7 @@ public class SkyblockItemOutputDto
 	public string Source { get; set; } = "HypixelAPI";
 	public double NpcValue { get; set; }
 	public string Lore { get; set; } = string.Empty;
-	
-	public ItemFlags Flags { get; set; } = new();
+	public required ItemFlags Flags { get; set; }
     
 	/// <summary>
 	/// Hypixel item data from /resources/skyblock/items

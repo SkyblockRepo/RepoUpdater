@@ -1,7 +1,7 @@
+using RepoAPI.Features.Items.ItemTemplate;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Items.Services;
 using RepoAPI.Features.Wiki.Services;
-using RepoAPI.Features.Wiki.Templates.ItemTemplate;
 
 namespace RepoAPI.Features.Items.Endpoints;
 

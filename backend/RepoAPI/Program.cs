@@ -21,6 +21,7 @@ services.AddSwaggerDocumentation();
 
 services.AddDatabaseConfiguration();
 services.RegisterServicesFromRepoAPI();
+services.AddGitHubClient();
 services.AddSelfConfiguringServices(builder.Configuration);
 
 services.Configure<JsonOptions>(o =>

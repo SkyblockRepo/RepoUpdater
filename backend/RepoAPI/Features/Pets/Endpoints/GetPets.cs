@@ -17,7 +17,7 @@ internal class GetPetsResponse
 	public Dictionary<string, SkyblockPetDto> Pets { get; set; } = new();
 }
 
-internal class GetPetsEndpoint(PetService petService) : Endpoint<GetPetsRequest, GetPetsResponse>
+internal class GetPetsEndpoint(IPetService petService) : Endpoint<GetPetsRequest, GetPetsResponse>
 {
 	public override void Configure()
 	{

@@ -1,14 +1,11 @@
 using System.Text.RegularExpressions;
+using RepoAPI.Features.Wiki.Templates;
 
-namespace RepoAPI.Features.Wiki.Templates.PetTemplate;
+namespace RepoAPI.Features.Pets.PetTemplate;
 
 [RegisterService<ITemplateParser<PetTemplateDto>>(LifeTime.Singleton)]
 public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
 {
-    // Regex to match property names in the format |property_name=
-    [GeneratedRegex(@"\|([^=]+?)\s*=", RegexOptions.Compiled)]
-    private static partial Regex PropertyNameRegex();
-    
     [GeneratedRegex(@"\{\{Pet/doc\|(?<id>[A-Z0-9_]+)\}\}", RegexOptions.Compiled)]
     private static partial Regex PetInternalId();
 

@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using RepoAPI.Features.Wiki.Templates.PetTemplate;
+using RepoAPI.Features.Pets.PetTemplate;
 using Riok.Mapperly.Abstractions;
 
 namespace RepoAPI.Features.Pets.Models;
@@ -19,9 +19,25 @@ public class SkyblockPetDto
 	public string Source { get; set; } = "HypixelAPI";
 	public string? Category { get; set; }
 	
-	public string Lore { get; set; } = string.Empty;
+	public int? MinLevel { get; set; }
+	public int? MaxLevel { get; set; }
+	
+	public Dictionary<string, PetRarityDto> PetRarities { get; set; } = new();
 	/// <summary>
 	/// Parsed data from the item template on the Hypixel Wiki.
 	/// </summary>
 	public PetTemplateDto? TemplateData { get; set; }
+}
+
+public class PetRarityDto
+{
+	public string Lore { get; set; } = string.Empty;
+	
+	public double? BaseHealth { get; set; }
+	public double? BaseDefense { get; set; }
+	public double? BaseStrength { get; set; }
+	public double? BaseSpeed { get; set; }
+	public double? BaseCritChance { get; set; }
+	public double? BaseCritDamage { get; set; }
+	public double? BaseIntelligence { get; set; }
 }
