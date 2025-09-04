@@ -35,6 +35,6 @@ public class PetService(DataContext context, HybridCache cache) : IPetService
 		{
 			query = query.Where(i => i.Source == source);
 		}
-		return await query.SelectDto().ToListAsync(ct);
+		return await query.Select(pet => pet.ToDto()).ToListAsync(ct);
 	}
 }

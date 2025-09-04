@@ -160,6 +160,27 @@ public static partial class ParserUtils
 
         return loreText;
     }
+
+    /// <summary>
+    /// Gets a numeric value from a wikitext template, stripping formatting and links.
+    /// Example: {{Coins|500,000}} -> 500000
+    /// </summary>
+    /// <param name="wikitext"></param>
+    /// <returns></returns>
+    public static double GetNumberFromTemplate(string? wikitext)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext)) return 0;
+
+        var text = CleanWikitext(wikitext);
+        text = text.Replace(",", "").Replace(" ", "").Trim();
+
+        if (double.TryParse(text, out var value))
+        {
+            return value;
+        }
+
+        return 0;
+    }
     
     [GeneratedRegex(@"^\s*style[^|]+\|")]
     private static partial Regex StylePrefixRegex();

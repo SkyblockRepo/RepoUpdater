@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+using RepoAPI.Core.Models;
 using RepoAPI.Features.Pets.PetTemplate;
 using Riok.Mapperly.Abstractions;
 
@@ -7,8 +9,23 @@ namespace RepoAPI.Features.Pets.Models;
 [Mapper]
 public static partial class SkyblockPetMapper
 {
-	public static partial SkyblockPetDto ToDto(this SkyblockPet pet);
-	public static partial IQueryable<SkyblockPetDto> SelectDto(this IQueryable<SkyblockPet> pet);
+	[UserMapping(Default = true)]
+	public static SkyblockPetDto ToDto(this SkyblockPet pet)
+	{
+		var data = pet.TemplateData;
+		return new SkyblockPetDto
+		{
+			InternalId = pet.InternalId,
+			Name = pet.Name,
+			Category = pet.Category,
+			Source = pet.Source,
+			Flags = data?.Flags ?? new PetFlags(),
+			BaseStats = data?.BaseStats ?? [],
+			MinLevel = data?.MinLevel,
+			MaxLevel = data?.MaxLevel,
+			Rarities = data?.PetRarities ?? new Dictionary<string, PetRarityDto>()
+		};
+	}
 }
 
 public class SkyblockPetDto
@@ -22,22 +39,27 @@ public class SkyblockPetDto
 	public int? MinLevel { get; set; }
 	public int? MaxLevel { get; set; }
 	
-	public Dictionary<string, PetRarityDto> PetRarities { get; set; } = new();
-	/// <summary>
-	/// Parsed data from the item template on the Hypixel Wiki.
-	/// </summary>
-	public PetTemplateDto? TemplateData { get; set; }
+	public List<string> BaseStats { get; set; } = [];
+	
+	public PetFlags Flags { get; set; } = new();
+	
+	public Dictionary<string, PetRarityDto> Rarities { get; set; } = new();
 }
 
 public class PetRarityDto
 {
-	public string Lore { get; set; } = string.Empty;
+	public Dictionary<string, string> Lore { get; set; } = new();
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public double Value { get; set; }
 	
-	public double? BaseHealth { get; set; }
-	public double? BaseDefense { get; set; }
-	public double? BaseStrength { get; set; }
-	public double? BaseSpeed { get; set; }
-	public double? BaseCritChance { get; set; }
-	public double? BaseCritDamage { get; set; }
-	public double? BaseIntelligence { get; set; }
+	public bool KatUpgradeable { get; set; }
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public List<UpgradeCost>? KatUpgradeCosts { get; set; }
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public int KatUpgradeSeconds { get; set; }
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public string? KatUpgradeTime { get; set; }
 }

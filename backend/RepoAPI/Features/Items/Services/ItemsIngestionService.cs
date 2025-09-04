@@ -130,8 +130,8 @@ public class ItemsIngestionService(
             },
             options: new HybridCacheEntryOptions
             {
-                Expiration = TimeSpan.FromMinutes(10),
-                LocalCacheExpiration = TimeSpan.FromMinutes(10)
+                Expiration = TimeSpan.FromHours(2),
+                LocalCacheExpiration = TimeSpan.FromHours(2)
             });
     }
 

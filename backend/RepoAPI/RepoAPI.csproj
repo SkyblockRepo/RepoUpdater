@@ -40,6 +40,7 @@
         <PackageReference Include="Riok.Mapperly" Version="4.2.1" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.7.0" />
         <PackageReference Include="StackExchange.Redis" Version="2.9.11" />
+        <PackageReference Include="TimeSpanParserUtil" Version="1.2.0" />
     </ItemGroup>
 
     <ItemGroup>

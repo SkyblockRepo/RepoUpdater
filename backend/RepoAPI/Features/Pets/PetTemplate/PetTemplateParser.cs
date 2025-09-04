@@ -1,5 +1,8 @@
 using System.Text.RegularExpressions;
+using RepoAPI.Core.Models;
+using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Wiki.Templates;
+using TimeSpanParserUtil;
 
 namespace RepoAPI.Features.Pets.PetTemplate;
 
@@ -41,65 +44,164 @@ public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
             // Map the found key to the correct DTO property
             switch (key)
             {
-                // case "name": dto.Name = value; break;
-                // case "rift_name": dto.RiftName = value; break;
-                // case "internal_id": dto.InternalId = value; break;
-                // case "image": dto.Image = value; break;
-                // case "infobox_image": dto.InfoboxImage = value; break;
-                // case "ref": dto.Ref = value; break;
-                // case "cr": dto.CollectionReference = value; break;
-                // case "bcr": dto.CollectionReferenceB = value; break;
-                // case "itemlorecolumns": dto.ItemLoreColumns = value; break;
-                // case "lore": dto.Lore = value; break;
-                // case "lore2": dto.Lore2 = value; break;
-                // case "real_lore": dto.RealLore = value; break;
-                // case "category": dto.Category = value; break;
-                // case "categoryb": dto.CategoryB = value; break;
-                // case "tier": dto.Tier = value; break;
-                // case "crafting_requirements": dto.CraftingRequirements = value; break;
-                // case "value": dto.Value = value; break;
-                // case "motes_value": dto.MotesValue = value; break;
-                // case "power": dto.Power = value; break;
-                // case "stats": dto.Stats = value; break;
-                // case "rift_stats": dto.RiftStats = value; break;
-                // case "ability_stats": dto.AbilityStats = value; break;
-                // case "requirements": dto.Requirements = value; break;
-                // case "essence": dto.Essence = value; break;
-                // case "essence_cost": dto.EssenceCost = value; break;
-                // case "dungeon_requirements": dto.DungeonRequirements = value; break;
-                // case "gemslots": dto.Gemslots = value; break;
-                // case "tradable": dto.Tradable = value; break;
-                // case "auctionable": dto.Auctionable = value; break;
-                // case "reforgeable": dto.Reforgeable = value; break;
-                // case "enchantable": dto.Enchantable = value; break;
-                // case "museumable": dto.Museumable = value; break;
-                // case "bazaarable": dto.Bazaarable = value; break;
-                // case "salvageable": dto.Salvageable = value; break;
-                // case "sackable": dto.Sackable = value; break;
-                // case "soulboundable": dto.Soulboundable = value; break;
-                // case "soulboundtype": dto.SoulboundType = value; break;
-                // case "rift_item": dto.RiftItem = value; break;
-                // case "rift_transferrable": dto.RiftTransferrable = value; break;
-                // case "item_color": dto.ItemColor = value; break;
-                // case "reforge": dto.Reforge = value; break;
-                // case "reforge_type": dto.ReforgeType = value; break;
-                // case "reforge_requirements": dto.ReforgeRequirements = value; break;
-                // case "collection": dto.Collection = value; break;
-                // case "collection_menu": dto.CollectionMenu = value; break;
-                // case "skill_xp": dto.SkillXp = value; break;
-                // case "rawmaterials": dto.RawMaterials = value; break;
-                // case "recipetree": dto.RecipeTree = value; break;
-                // case "upgrading": dto.Upgrading = value; break;
-                // case "scaled_stats": dto.ScaledStats = value; break;
-                // case "essence_upgrading": dto.EssenceUpgrading = value; break;
-                // case "skins": dto.Skins = value; break;
-                // case "sources": dto.Sources = value; break;
+                case "lore":
+                {
+                    dto.Lore = ParserUtils.GetPropDictionaryFromSwitch(value)
+                        .ToDictionary(x => 
+                            x.Key, x => 
+                            ParserUtils.GetPropDictionaryFromSwitch(x.Value.Replace("| sbpet", "| max = sbpet"))
+                                .ToDictionary(l => l.Key, l => ParserUtils.CleanLoreString(l.Value))
+                        );
+                    break;
+                }
+                case "kat": {
+                    dto.Kat = value;
+                    break;
+                }
+                case "leveling": {
+                    dto.Leveling = value;
+                    break;
+                }
+                case "category": {
+                    dto.Category = value;
+                    break;
+                }
+                case "name": {
+                    dto.Name = value;
+                    break;
+                }
+                case "basestats": {
+                    dto.BaseStats = value.Split(["<br>"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(l => ParserUtils.CleanWikitext(l))
+                        .ToList();
+                    break;
+                }
                 default: {
                     dto.AdditionalProperties.TryAdd(key, value);
                     break;
                 }
             }
         }
+
+        dto.MaxLevel = dto.Leveling?.Contains("200") is true
+            ? 200
+            : 100;
+        dto.MinLevel = dto.MaxLevel - 99;
+        
+        var props = dto.AdditionalProperties;
+
+        dto.Flags = new PetFlags()
+        {
+            Auctionable = props.TryGetValue("auctionable", out var auctionable) &&
+                          auctionable.ToString()?.Contains("Yes") is true,
+            Mountable = props.TryGetValue("mountable", out var mountable) &&
+                        mountable.ToString()?.Contains("Yes") is true,
+            Tradable = props.TryGetValue("tradable", out var tradable) && tradable.ToString()?.Contains("Yes") is true,
+            Museumable = props.TryGetValue("museumable", out var museumable) &&
+                         museumable.ToString()?.Contains("Yes") is true,
+        };
+        
+        var katUpgradeable = !dto.Kat.Contains("can't have its rarity upgraded by");
+        
+        var katMatch = KatRarityRange().Match(dto.Kat);
+        var rarityOrder = new List<string> { "common", "uncommon", "rare", "epic", "legendary", "mythic" };
+        var katStartIndex = -1;
+        var katEndIndex = -1;
+        
+        if (katMatch.Success)
+        {
+            var startRarity = katMatch.Groups["start"].Value.ToLowerInvariant();
+            var endRarity = katMatch.Groups["end"].Value.ToLowerInvariant();
+            katStartIndex = rarityOrder.IndexOf(startRarity);
+            katEndIndex = rarityOrder.IndexOf(endRarity);
+        }
+        
+        foreach (var (rarityKey, lore) in dto.Lore)
+        {
+            var rarity = rarityKey.ToLowerInvariant();
+            
+            var coinValue = dto.AdditionalProperties.TryGetValue($"{rarity}_value", out var value) 
+                ? ParserUtils.GetNumberFromTemplate(value.ToString())
+                : 0;
+
+            var katUpgrade = false;
+            if (katUpgradeable && katStartIndex != -1 && katEndIndex != -1)
+            {
+                var rarityIndex = rarityOrder.IndexOf(rarity);
+                if (rarityIndex >= katStartIndex && rarityIndex < katEndIndex)
+                {
+                    katUpgrade = true;
+                }
+            }
+
+            dto.PetRarities.TryAdd(rarity.ToUpperInvariant(), new PetRarityDto
+            {
+                Lore = lore,
+                Value = coinValue,
+                KatUpgradeable = katUpgrade,
+            });
+        }
+        
+        var templateStart = dto.Kat.IndexOf("{{Kat Cost", StringComparison.Ordinal);
+        if (templateStart == -1) return dto;
+        
+        var substring = dto.Kat[templateStart..];
+        var data = ParserUtils.GetPropDictionary(substring);
+        
+        foreach (var (key, val) in data)
+        {
+            var keyLower = key.ToLowerInvariant();
+            if (keyLower.StartsWith("cost_") && keyLower.Contains("_level_"))
+            {
+                var parts = keyLower.Split('_', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length != 4 || parts[3] != "1") continue;
+                
+                var rarity = parts[1].ToUpperInvariant();
+                if (!dto.PetRarities.TryGetValue(rarity, out var petRarity)) continue;
+                
+                // Get coins and items from the value
+                var lines = val.Split("<br>", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                        
+                var coinLine = lines.FirstOrDefault(l => l.Contains("{{Coins|"));
+                if (coinLine != null)
+                {
+                    var coinCost = ParserUtils.GetNumberFromTemplate(coinLine);
+                    petRarity.KatUpgradeCosts ??= [];
+                    petRarity.KatUpgradeCosts.Add(UpgradeCost.CoinCost((int)coinCost));
+                }
+                        
+                foreach (var itemLine in lines.Where(l => !l.Contains("{{Coins|")) )
+                {
+                    var itemMatch = KatCostItemRegex().Match(itemLine);
+                    if (!itemMatch.Success) continue;
+                    
+                    var qtyStr = itemMatch.Groups["qty"].Value;
+                    var itemStr = itemMatch.Groups["item"].Value;
+                    if (!int.TryParse(qtyStr, out var qty)) continue;
+                    
+                    var itemId = itemStr.Replace(" ", "_").ToUpperInvariant();
+                    
+                    petRarity.KatUpgradeCosts ??= [];
+                    petRarity.KatUpgradeCosts.Add(UpgradeCost.ItemCost(itemId, qty));
+                }
+            }
+            else if (keyLower.StartsWith("time_"))
+            {
+                var parts = keyLower.Split('_', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length != 2) continue;
+                
+                var rarity = parts[1].ToUpperInvariant();
+                if (dto.PetRarities.TryGetValue(rarity, out var petRarity))
+                {
+                    if (TimeSpanParser.TryParse(val.ToLowerInvariant(), out var valTs)) {
+                        petRarity.KatUpgradeSeconds = (int) valTs.TotalSeconds;
+                    } else { 
+                        petRarity.KatUpgradeTime = val;
+                    }
+                }
+            }
+        }
+        
         return dto;
     }
 
@@ -107,4 +209,21 @@ public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
     {
         return $"Template:Pet/{input}";
     }
+    
+    /// <summary>
+    /// Extract start and end rarities from the kat string.
+    /// from {{Common}} all the way up to {{Mythic}} -> Common, Mythic
+    /// </summary>
+    /// <returns></returns>
+    [GeneratedRegex(@"\{\{(?<start>[A-Za-z]+)\}\} all the way up to \{\{(?<end>[A-Za-z]+)\}\}", RegexOptions.Compiled | RegexOptions.Singleline)]
+    private static partial Regex KatRarityRange();
+    
+    /// <summary>
+    /// Regex to extract item cost lines from the kat cost section.
+    /// Example line: 128 [[File:Minecraft_items_raw_chicken.png|25px|link=Raw Chicken
+    /// Matches quantity = 128, itemId = Raw Chicken (from link=Raw Chicken)
+    /// </summary>
+    /// <returns></returns>
+    [GeneratedRegex(@"(?<qty>\d+)\s+\[\[File:(?<file>[^|\]]+)(\|[^]]*)?\|link=(?<item>[^\]]+)\]\]", RegexOptions.Compiled)]
+    private static partial Regex KatCostItemRegex();
 }

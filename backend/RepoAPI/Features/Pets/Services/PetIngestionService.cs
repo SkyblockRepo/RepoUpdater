@@ -50,8 +50,8 @@ public class PetsIngestionService(
                 }
 
                 pet.RawTemplate = templateData?.Wikitext;
-                pet.Name = templateData?.Data?.AdditionalProperties.GetValueOrDefault("Name") as string ?? pet.InternalId;
-                pet.Category = templateData?.Data?.AdditionalProperties.GetValueOrDefault("Category") as string ?? pet.Category;
+                pet.Name = templateData?.Data?.Name ?? pet.InternalId;
+                pet.Category = templateData?.Data?.Category;
                 // pet.TemplateData = templateData?.Data;
                 
                 await WriteChangesToFile(pet);

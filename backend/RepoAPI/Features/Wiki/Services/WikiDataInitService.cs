@@ -18,6 +18,9 @@ public class WikiDataInitService(
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
 	{
+		await petsIngestionService.FetchAndLoadDataAsync(ct);
+		
+		
 		await hybridCache.GetOrCreateAsync(
 			"pets-exist",
 			async c => {
