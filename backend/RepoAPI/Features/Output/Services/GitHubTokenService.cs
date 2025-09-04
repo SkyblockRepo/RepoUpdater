@@ -15,12 +15,15 @@ public interface IGitHubTokenService
 public class GitHubTokenService(
     ILogger<GitHubTokenService> logger,
     IOptions<GitSyncOptions> gitSyncOptions
-) : IGitHubTokenService
+) : IGitHubTokenService, IDisposable
 {
     private readonly GitSyncOptions _config = gitSyncOptions.Value;
     private string? _token;
     private DateTimeOffset _tokenExpiration;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
+    
+    private RSA? _rsa;
+    private SigningCredentials? _credentials;
 
     public async Task<string> GetTokenAsync()
     {
@@ -86,26 +89,30 @@ public class GitHubTokenService(
 
     private string GenerateJwtToken()
     {
-        using var rsa = RSA.Create();
-        rsa.ImportFromPem(GetPrivateKey());
+        _credentials ??= CreateSigningCredentials();
         
-        var securityKey = new RsaSecurityKey(rsa);
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.RsaSha256);
-
         var handler = new JsonWebTokenHandler();
         var now = DateTime.UtcNow;
-
+        
         var descriptor = new SecurityTokenDescriptor
         {
             Issuer = _config.AppId.ToString(),
             IssuedAt = now,
             Expires = now.AddMinutes(9),
-            SigningCredentials = credentials
+            SigningCredentials = _credentials
         };
 
         return handler.CreateToken(descriptor);
     }
-
+    
+    private SigningCredentials CreateSigningCredentials()
+    {
+        _rsa = RSA.Create();
+        _rsa.ImportFromPem(GetPrivateKey());
+        
+        var securityKey = new RsaSecurityKey(_rsa);
+        return new SigningCredentials(securityKey, SecurityAlgorithms.RsaSha256);
+    }
     
     private string GetPrivateKey()
     {
@@ -114,5 +121,12 @@ public class GitHubTokenService(
         if (!string.IsNullOrWhiteSpace(_config.PrivateKeyPath))
             return File.ReadAllText(_config.PrivateKeyPath);
         throw new InvalidOperationException("GitHub App private key is not configured.");
+    }
+
+    public void Dispose()
+    {
+        _semaphore.Dispose();
+        _rsa?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

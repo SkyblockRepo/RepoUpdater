@@ -133,7 +133,7 @@ public class EnchantmentIngestionService(
 			}
 			
 			// Wait for a moment to avoid hitting rate limits/overloading the wiki API
-			await Task.Delay(300, ct);
+			await Task.Delay(500, ct);
 		}
 		
 		await context.SaveChangesAsync(ct);

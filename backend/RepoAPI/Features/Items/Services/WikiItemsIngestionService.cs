@@ -81,7 +81,7 @@ public class WikiItemsIngestionService(
 			await context.SaveChangesAsync(ct);
 			
 			// Wait for a moment to avoid hitting rate limits/overloading the wiki API
-			await Task.Delay(300, ct);
+			await Task.Delay(500, ct);
 		}
 		
 		if (newItems > 0) { 
