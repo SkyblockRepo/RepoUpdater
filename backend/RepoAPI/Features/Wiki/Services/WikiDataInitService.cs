@@ -10,6 +10,7 @@ namespace RepoAPI.Features.Wiki.Services;
 
 [RegisterService<WikiDataInitService>(LifeTime.Scoped)]
 public class WikiDataInitService(
+	DataContext context,
 	IWikiDataService dataService,
 	RecipeIngestionService recipeIngestionService,
 	EnchantmentIngestionService enchantmentIngestionService,
@@ -18,8 +19,7 @@ public class WikiDataInitService(
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
 	{
-		await petsIngestionService.FetchAndLoadDataAsync(ct);
-		
+		// await InitializeAttributeShards(ct);
 		
 		await hybridCache.GetOrCreateAsync(
 			"pets-exist",
@@ -86,6 +86,30 @@ public class WikiDataInitService(
 	{
 		var response = await dataService.GetAttributeListAsync();
 		var list = response.Attributes;
+		
+		foreach (var shard in list)
+		{
+			var internalId = $"SHARD_{shard.ShardName.Replace(" ", "_").ToUpperInvariant()}";
+			var existing = await context.SkyblockItems.FirstOrDefaultAsync(s => s.InternalId == internalId, cancellationToken: ct);
+			if (existing is null)
+			{
+				continue;
+			}
+			
+			// if (existing != null) continue;
+			//
+			// var newPet = new SkyblockPet
+			// {
+			// 	InternalId = shard.Id,
+			// 	Name = shard.Name ?? shard.Id,
+			// 	Source = "HypixelWiki",
+			// 	Rarity = "UNCOMMON",
+			// 	Type = "ATTRIBUTE_SHARD",
+			// 	RawTemplate = shard.Wikitext
+			// };
+			//
+			// await petsIngestionService.AddOrUpdatePetAsync(newPet, ct);
+		}
 		
 		// if (newItems > 0) { 
 		// 	await context.SaveChangesAsync(ct);

@@ -1,4 +1,5 @@
 using HypixelAPI;
+using HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Data;
@@ -20,10 +21,9 @@ public class ItemsIngestionService(
     HybridCache hybridCache,
     ILogger<ItemsIngestionService> logger) 
 {
-    private static DateTimeOffset LastWikiFetch = DateTimeOffset.MinValue;
-    
     public async Task IngestItemsDataAsync() {
         var apiResponse = await hypixelApi.FetchItems();
+        var bazaarResponse = await hypixelApi.FetchBazaar();
         
         if (!apiResponse.IsSuccessStatusCode || apiResponse.Content is not { Success: true }) {
             var errorContent = apiResponse.Error != null
@@ -33,6 +33,8 @@ public class ItemsIngestionService(
                 apiResponse.StatusCode, errorContent);
             return;
         }
+        
+        var bzItems = bazaarResponse.Content?.Products ?? new Dictionary<string, BazaarItem>();
 
         var itemsFromApi = apiResponse.Content.Items;
 
@@ -50,7 +52,7 @@ public class ItemsIngestionService(
             
             if (existingItems.TryGetValue(apiItem.Id, out var existingItem)) {
                 // Check if the item data has changed
-                if (ParserUtils.DeepJsonEquals(apiItem, existingItem.Data))
+                if (existingItem.Data is null || ParserUtils.DeepJsonEquals(apiItem, existingItem.Data))
                 {
                     // TEMPORARY TO WRITE INITIAL FILES
                     await WriteChangesToFile(existingItem);
@@ -98,10 +100,38 @@ public class ItemsIngestionService(
                 }
                 
                 itemsToAdd.Add(newItem);
+                existingItems.Add(apiItem.Id, newItem);
                 newCount++;
                 
                 await WriteChangesToFile(newItem);
             }
+        }
+        
+        foreach (var bzItemId in bzItems.Keys) {
+            if (existingItems.TryGetValue(bzItemId, out var existing))
+            {
+                await WriteChangesToFile(existing);
+                continue;
+            }
+            
+            // New bazaar item not in the main item list
+            var newItem = new SkyblockItem
+            {
+                InternalId = bzItemId,
+                Name = bzItemId,
+                NpcValue = 0,
+                Flags = new ItemFlags() {
+                    Bazaarable = true
+                },
+                Data = null,
+                Latest = true,
+                Source = "HypixelBazaar",
+            };
+            
+            itemsToAdd.Add(newItem);
+            newCount++;
+                
+            await WriteChangesToFile(newItem);
         }
         
         if (itemsToAdd.Count != 0) {

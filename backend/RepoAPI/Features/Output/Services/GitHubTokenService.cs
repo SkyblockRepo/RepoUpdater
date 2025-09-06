@@ -33,9 +33,14 @@ public class GitHubTokenService(
         {
             // Don't refresh the token if it's null, or if it's about to expire (e.g., within the next 5 minutes).
             if (_token is not null && DateTimeOffset.UtcNow < _tokenExpiration.AddMinutes(-5)) return _token!;
-            
+
             logger.LogInformation("GitHub App token is expired or nearing expiration. Generating a new one...");
             await GenerateNewTokenAsync();
+            return _token!;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to generate a new token.");
             return _token!;
         }
         finally
