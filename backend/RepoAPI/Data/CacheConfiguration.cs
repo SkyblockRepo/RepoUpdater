@@ -22,7 +22,8 @@ public static class CacheConfiguration
 			return builder;
 		}
 		
-		var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6380";
+		var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+
 		try {
 			var multiplexer = ConnectionMultiplexer.Connect(redisConnection);
 			builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);

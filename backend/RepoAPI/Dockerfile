@@ -1,11 +1,12 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS base
+RUN apk add git
 USER $APP_UID
 WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 EXPOSE 9103
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["RepoAPI/RepoAPI.csproj", "RepoAPI/"]
@@ -21,5 +22,4 @@ RUN dotnet publish "./RepoAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-RUN apk add git
 ENTRYPOINT ["dotnet", "RepoAPI.dll"]

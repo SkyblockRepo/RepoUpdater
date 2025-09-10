@@ -132,7 +132,7 @@ public class JsonFileWriterService(
 	private static string SanitizeFileName(string fileName)
 	{
 		var invalidChars = Path.GetInvalidFileNameChars();
-		return string.Concat(fileName.Select(c => invalidChars.Contains(c) ? '-' : c));
+		return string.Concat(fileName.Select(c => invalidChars.Contains(c) || c == ':' ? '-' : c));
 	}
 	
 	private static string GetOutputBasePath()

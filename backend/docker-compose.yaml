@@ -1,6 +1,5 @@
 ﻿services:
   api:
-    image: repoapi:latest
     restart: unless-stopped
     build:
       context: .
@@ -10,10 +9,11 @@
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
       - ASPNETCORE_URLS=http://+:7007;http://+:9103
     ports:
-      - "7007"
-      - "9103"
+      - "7007:7007"
+      - "9103:9103"
     volumes:
       - ../output:/output
+      - ../overrides:/overrides
     depends_on:
       - database
       - cache
