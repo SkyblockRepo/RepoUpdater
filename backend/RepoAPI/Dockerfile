@@ -1,23 +1,25 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 USER $APP_UID
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 80
+EXPOSE 443
+EXPOSE 9103
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Api/Api.csproj", "Api/"]
-RUN dotnet restore "Api/Api.csproj"
+COPY ["RepoAPI/RepoAPI.csproj", "RepoAPI/"]
+RUN dotnet restore "RepoAPI/RepoAPI.csproj"
 COPY . .
-WORKDIR "/src/Api"
-RUN dotnet build "./Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/RepoAPI"
+RUN dotnet build "./RepoAPI.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./RepoAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Api.dll"]
+RUN apk add git
+ENTRYPOINT ["dotnet", "RepoAPI.dll"]
