@@ -1,10 +1,10 @@
 ﻿services:
   api:
-    image: api
+    image: repoapi:latest
     restart: unless-stopped
     build:
       context: .
-      dockerfile: Api/Dockerfile
+      dockerfile: RepoAPI/Dockerfile
     environment:
       - POSTGRES_CONNECTION="Server=database;Port=5432;Database=${POSTGRES_DB:-repoapi};Username=${POSTGRES_USER:-user};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD env variable is required};Include Error Detail=true"
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
@@ -12,6 +12,8 @@
     ports:
       - "7007"
       - "9103"
+    volumes:
+      - ../output:/output
     depends_on:
       - database
       - cache
@@ -24,9 +26,9 @@
       - .env
     command: -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
     ports:
-      - '${POSTGRES_PORT:?POSTGRES_PORT env variable is required}:5432'
+      - "${POSTGRES_PORT:?POSTGRES_PORT env variable is required}:5432"
     expose:
-      - '${POSTGRES_PORT:?POSTGRES_PORT env variable is required}'
+      - "${POSTGRES_PORT:?POSTGRES_PORT env variable is required}"
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
@@ -36,18 +38,18 @@
     restart: always
     command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD env variable is required}
     ports:
-      - '${REDIS_PORT:?REDIS_PORT env variable is required}:6379'
+      - "${REDIS_PORT:?REDIS_PORT env variable is required}:6379"
     expose:
-      - '${REDIS_PORT:?REDIS_PORT env variable is required}'
+      - "${REDIS_PORT:?REDIS_PORT env variable is required}"
     volumes:
       - redis-data:/data
     networks:
       - skyblockrepo-network
-  
+
 volumes:
-    db-data: {}
-    redis-data: {}
-  
+  db-data: {}
+  redis-data: {}
+
 networks:
-    skyblockrepo-network:
-        driver: bridge
+  skyblockrepo-network:
+    driver: bridge
