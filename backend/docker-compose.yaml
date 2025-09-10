@@ -7,6 +7,11 @@
       dockerfile: Api/Dockerfile
     environment:
       - POSTGRES_CONNECTION="Server=database;Port=5432;Database=${POSTGRES_DB:-repoapi};Username=${POSTGRES_USER:-user};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD env variable is required};Include Error Detail=true"
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - ASPNETCORE_URLS=http://+:7007;http://+:9103
+    ports:
+      - "7007"
+      - "9103"
     depends_on:
       - database
       - cache
