@@ -12,7 +12,7 @@ internal class GetEnchantmentsRequest
 
 internal class GetEnchantmentsResponse
 {
-	public Dictionary<string, SkyblockEnchantment> Enchantments { get; set; } = new();
+	public Dictionary<string, SkyblockEnchantmentDto> Enchantments { get; set; } = new();
 }
 
 internal class GetEnchantmentsEndpoint(DataContext context) : Endpoint<GetEnchantmentsRequest, GetEnchantmentsResponse>
@@ -47,7 +47,7 @@ internal class GetEnchantmentsEndpoint(DataContext context) : Endpoint<GetEnchan
 
 		var result = new GetEnchantmentsResponse
 		{
-			Enchantments = enchantments.ToDictionary(i => i.InternalId, i => i)
+			Enchantments = enchantments.ToDictionary(i => i.InternalId, i => i.ToDto())
 		};
 
 		await Send.OkAsync(result, ct);

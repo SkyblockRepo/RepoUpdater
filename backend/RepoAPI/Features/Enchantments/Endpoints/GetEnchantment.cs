@@ -11,7 +11,7 @@ internal class GetItemRequest
 
 internal class GetItemResponse
 {
-	public SkyblockEnchantment? Enchantment { get; set; }
+	public SkyblockEnchantmentDto? Enchantment { get; set; }
 }
 
 internal class GetEnchantmentEndpoint(DataContext context) : Endpoint<GetItemRequest, GetItemResponse>
@@ -38,7 +38,7 @@ internal class GetEnchantmentEndpoint(DataContext context) : Endpoint<GetItemReq
 		
 		var result = new GetItemResponse
 		{
-			Enchantment = enchantment
+			Enchantment = enchantment?.ToDto()
 		};
 		
 		await Send.OkAsync(result, ct);
