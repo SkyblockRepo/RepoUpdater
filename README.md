@@ -1,6 +1,6 @@
 # Skyblock Repo Tools
 
-A monorepo containing the website https://skyblockrepo.com, autoupdating scripts, and future packages.
+A monorepo containing Skyblock Repo autoupdating scripts and api.
 
 > [!WARNING]
 > This is not production ready yet! This is very early and all data/schemas are subject to change
