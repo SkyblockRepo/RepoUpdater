@@ -179,7 +179,7 @@ public class GitSyncService(
             return;
         }
 
-        var (pushExitCode, pushOutput) = await RunGitAsync($"push origin {branch}", _outputBasePath);
+        var (pushExitCode, pushOutput) = await RunGitAsync($"push origin {branch} --force-with-lease", _outputBasePath);
 
         if (pushExitCode == 0)
         {

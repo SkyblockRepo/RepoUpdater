@@ -12,7 +12,7 @@ public class JsonFileWriterService(
 {
 	private readonly string _outputBasePath = GetOutputBasePath();
 	private readonly string _overridesBasePath = Path.Combine(GetOutputBasePath(), "..", "overrides");
-	private readonly Dictionary<string, bool> _exclusionCache = new();
+	private readonly Dictionary<string, bool> _exclusionCache = [];
 	
 	private readonly JsonSerializerOptions _jsonOptions = new()
 	{
