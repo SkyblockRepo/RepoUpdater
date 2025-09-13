@@ -170,19 +170,34 @@ public class GitSyncService(
         // Stage
         await RunGitAsync("add .", _outputBasePath);
 
-        // Commit
-        var (commitExitCode, commitOutput) = await RunGitAsync(
-            $"commit -m \"Automated Sync {DateTime.UtcNow:O}\"", 
-            _outputBasePath
-        );
-
-        if (commitExitCode != 0)
+        // Check if there’s anything to commit
+        var (statusExitCode, statusOutput) = await RunGitAsync("status --porcelain", _outputBasePath);
+        if (statusExitCode != 0)
         {
-            logger.LogInformation("Commit failed or no changes to commit. Output: {Output}", commitOutput);
+            logger.LogWarning("Failed to check git status. Output:\n{Output}", statusOutput);
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusOutput))
+        {
+            // Only commit if there are changes
+            var (commitExitCode, commitOutput) = await RunGitAsync(
+                $"commit -m \"Automated Sync {DateTime.UtcNow:O}\"",
+                _outputBasePath
+            );
+
+            if (commitExitCode != 0)
+            {
+                logger.LogError("Commit failed. Output:\n{Output}", commitOutput);
+                return;
+            }
+
+            logger.LogInformation("Committed changes to branch '{Branch}'.", branch);
+        } else {
+            logger.LogInformation("No changes detected, skipping commit.");
             return;
         }
 
-        var (pushExitCode, pushOutput) = await RunGitAsync($"push origin {branch} --force-with-lease", _outputBasePath);
+        var (pushExitCode, pushOutput) = await RunGitAsync($"push origin {branch} --force", _outputBasePath);
 
         if (pushExitCode == 0)
         {
