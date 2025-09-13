@@ -21,10 +21,21 @@ public class PetsIngestionService(
 
     public async Task FetchAndLoadDataAsync(CancellationToken ct = default)
     {
+        logger.LogInformation("Starting wiki pet ingestion...");
+        
         const int batchSize = 50;
         var newPets = 0;
+        var updatedPets = 0;
         var allPetIds = await wikiService.GetAllWikiPetsAsync();
 
+        if (allPetIds.Count == 0)
+        {
+            logger.LogWarning("No pets found from wiki to initialize.");
+            return;
+        }
+        
+        logger.LogInformation("Fetched {Count} pets from wiki.", allPetIds.Count);
+        
         for (var i = 0; i < allPetIds.Count; i += batchSize)
         {
             var batchIds = allPetIds.Skip(i).Take(batchSize).ToList();
@@ -52,6 +63,7 @@ public class PetsIngestionService(
                 pet.RawTemplate = templateData?.Wikitext;
                 pet.Name = templateData?.Data?.Name ?? pet.InternalId;
                 pet.Category = templateData?.Data?.Category;
+                updatedPets++;
                 // pet.TemplateData = templateData?.Data;
                 
                 await WriteChangesToFile(pet);
@@ -62,6 +74,10 @@ public class PetsIngestionService(
 
         if (newPets > 0) { 
             logger.LogInformation("Initialized wiki data for {NewPets} new pets", newPets);
+        }
+        
+        if (updatedPets > 0) { 
+            logger.LogInformation("Updated wiki data for {UpdatedPets} pets", updatedPets);
         }
     }
     

@@ -36,6 +36,8 @@ public class RecipeIngestionService(
 			return;
 		}
 		
+		logger.LogInformation("Fetched {Count} recipes from wiki.", allRecipes.Count);
+		
 		var existingRecipes = await context.SkyblockRecipes
 			.Where(r => r.Latest && r.Type == RecipeType.Crafting)
 			.ToDictionaryAsync(r => r.InternalId, ct);
