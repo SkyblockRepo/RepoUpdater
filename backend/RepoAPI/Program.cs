@@ -30,17 +30,19 @@ services.Configure<JsonOptions>(o =>
 	o.SerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
 });
 
+var userAgent = builder.Configuration["RefitSettings:UserAgent"] ?? "RepoAPI/1.0 (+https://skyblockrepo.com/)";
+
 services.AddRefitClient<IWikiApi>()
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https://wiki.hypixel.net/");
-		c.DefaultRequestHeaders.Add("User-Agent", "RepoAPI/1.0 (+https://skyblockrepo.com/)");
+		c.DefaultRequestHeaders.Add("User-Agent", userAgent);
 		c.Timeout = TimeSpan.FromSeconds(10);
 	})
 	.AddHttpMessageHandler<LoggingDelegatingHandler>()
 	.AddStandardResilienceHandler();
 
-services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, "RepoAPI/1.0 (+https://skyblockrepo.com/)")
+services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, userAgent)
 	.AddHttpMessageHandler<LoggingDelegatingHandler>()
 	.AddStandardResilienceHandler();
 
