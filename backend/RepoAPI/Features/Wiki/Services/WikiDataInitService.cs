@@ -19,8 +19,6 @@ public class WikiDataInitService(
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
 	{
-		// await InitializeAttributeShards(ct);
-		
 		await hybridCache.GetOrCreateAsync(
 			"pets-exist",
 			async c => {
@@ -76,10 +74,22 @@ public class WikiDataInitService(
 	public async Task InitializeWikiDataAsync(CancellationToken ct)
 	{
 		// await InitializeWikiItems(ct);
-		await petsIngestionService.FetchAndLoadDataAsync(ct);
-		await recipeIngestionService.FetchAndLoadDataAsync(ct);
-		await enchantmentIngestionService.FetchAndLoadDataAsync(ct);
-		await InitializeAttributeShards(ct);
+		
+		var petsExist = await context.SkyblockPets.AnyAsync(ct);
+		if (petsExist) {
+			await petsIngestionService.FetchAndLoadDataAsync(ct);
+		}
+		
+		var recipesExist = await context.SkyblockRecipes.AnyAsync(ct);
+		if (recipesExist) {
+			await recipeIngestionService.FetchAndLoadDataAsync(ct);
+		}
+		
+		var enchantsExist = await context.SkyblockEnchantments.AnyAsync(ct);
+		if (enchantsExist) {
+			await enchantmentIngestionService.FetchAndLoadDataAsync(ct);
+		}
+		// await InitializeAttributeShards(ct);
 	}
 	
 	private async Task InitializeAttributeShards(CancellationToken ct)

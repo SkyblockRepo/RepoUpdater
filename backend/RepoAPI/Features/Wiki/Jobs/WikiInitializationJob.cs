@@ -24,6 +24,10 @@ public class WikiInitializationJob(WikiDataInitService initService) : ISelfConfi
 	
 	public async Task Execute(IJobExecutionContext context)
 	{
+		// Only does a full load if we haven't initialized before.
+		await initService.InitializeWikiDataAsync(context.CancellationToken);
+		
+		// Check for updates to pets, recipes, and enchantments.
 		await initService.InitializeWikiDataIfNeededAsync(context.CancellationToken);
 	}
 }
