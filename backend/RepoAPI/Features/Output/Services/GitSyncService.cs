@@ -133,42 +133,53 @@ public class GitSyncService(
     
     private async Task CommitAndPushAsync(IGitHubClient client)
     {
-        var branch = _config.TargetBranch;
-        
-        var botName = $"{_config.AppName}[bot]";
-        var botEmail = $"{_config.AppId}+{_config.AppName}[bot]@users.noreply.github.com";
-        await RunGitAsync($"config user.name \"{botName}\"", _outputBasePath);
-        await RunGitAsync($"config user.email \"{botEmail}\"", _outputBasePath);
-
-        // Prepare the branch
-        await RunGitAsync("fetch origin", _outputBasePath);
-        await RunGitAsync($"checkout -t origin/{branch}", _outputBasePath);
-        
-        var (branchExistsCode, _) = await RunGitAsync($"show-branch {branch}", _outputBasePath);
-        if (branchExistsCode != 0)
-        {
-            await RunGitAsync($"checkout -b {branch} origin/main", _outputBasePath);
-        }
-        
-        await RunGitAsync("rebase origin/main", _outputBasePath);
-
-        await RunGitAsync("add .", _outputBasePath);
-
         if (!_config.PushEnabled)
         {
             logger.LogInformation("Push is disabled. Skipping commit and push.");
             return;
         }
 
-        var (commitExitCode, _) = await RunGitAsync($"commit -m \"Automated Sync {DateTime.UtcNow:O}\"", _outputBasePath);
+        var branch = _config.TargetBranch;
+
+        var botName = $"{_config.AppName}[bot]";
+        var botEmail = $"{_config.AppId}+{_config.AppName}[bot]@users.noreply.github.com";
+        await RunGitAsync($"config user.name \"{botName}\"", _outputBasePath);
+        await RunGitAsync($"config user.email \"{botEmail}\"", _outputBasePath);
+
+        var token = await serviceProvider.GetRequiredService<IGitHubTokenService>().GetTokenAsync();
+        var patUrl = _config.RepositoryUrl.Replace(
+            "https://",
+            $"https://x-access-token:{token}@"
+        );
+        await RunGitAsync($"remote set-url origin {patUrl}", _outputBasePath);
+
+        // Fetch and check out branch
+        await RunGitAsync("fetch origin", _outputBasePath);
+        var (branchExistsCode, _) = await RunGitAsync($"rev-parse --verify {branch}", _outputBasePath);
+
+        if (branchExistsCode != 0) {
+            await RunGitAsync($"checkout -b {branch} origin/{_config.MainBranch}", _outputBasePath);
+        } else {
+            await RunGitAsync($"checkout {branch}", _outputBasePath);
+            await RunGitAsync($"merge origin/{_config.MainBranch}", _outputBasePath);
+        }
+
+        // Stage
+        await RunGitAsync("add .", _outputBasePath);
+
+        // Commit
+        var (commitExitCode, commitOutput) = await RunGitAsync(
+            $"commit -m \"Automated Sync {DateTime.UtcNow:O}\"", 
+            _outputBasePath
+        );
+
         if (commitExitCode != 0)
         {
-            logger.LogInformation("Commit failed or there were no changes to commit.");
+            logger.LogInformation("Commit failed or no changes to commit. Output: {Output}", commitOutput);
             return;
         }
 
-        // Force push is required because we reset the branch history in the checkout step
-        var (pushExitCode, pushOutput) = await RunGitAsync($"push --force-with-lease origin {branch}", _outputBasePath);
+        var (pushExitCode, pushOutput) = await RunGitAsync($"push origin {branch}", _outputBasePath);
 
         if (pushExitCode == 0)
         {
@@ -177,7 +188,8 @@ public class GitSyncService(
         }
         else
         {
-            logger.LogError("Failed to push changes. Exit: {Code}, Output: {Output}", pushExitCode, pushOutput);
+            logger.LogError("Failed to push changes. ExitCode={Code}\nOutput:\n{Output}", 
+                pushExitCode, pushOutput);
         }
     }
 
