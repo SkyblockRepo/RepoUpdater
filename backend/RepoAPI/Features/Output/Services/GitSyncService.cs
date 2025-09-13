@@ -159,10 +159,13 @@ public class GitSyncService(
 
         if (branchExistsCode != 0) {
             await RunGitAsync($"checkout -b {branch} origin/{_config.MainBranch}", _outputBasePath);
+            await RunGitAsync($"push -u origin {branch}", _outputBasePath);
         } else {
             await RunGitAsync($"checkout {branch}", _outputBasePath);
             await RunGitAsync($"merge origin/{_config.MainBranch}", _outputBasePath);
         }
+
+        await RunGitAsync($"branch --set-upstream-to=origin/{branch} {branch}", _outputBasePath);
 
         // Stage
         await RunGitAsync("add .", _outputBasePath);
