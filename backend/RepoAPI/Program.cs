@@ -34,12 +34,14 @@ services.AddRefitClient<IWikiApi>()
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https://wiki.hypixel.net/");
-		c.DefaultRequestHeaders.Add("User-Agent", "RepoAPI");
+		c.DefaultRequestHeaders.Add("User-Agent", "RepoAPI/1.0 (+https://skyblockrepo.com/)");
 		c.Timeout = TimeSpan.FromSeconds(10);
 	})
+	.AddHttpMessageHandler<LoggingDelegatingHandler>()
 	.AddStandardResilienceHandler();
 
-services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, "RepoAPI")
+services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, "RepoAPI/1.0 (+https://skyblockrepo.com/)")
+	.AddHttpMessageHandler<LoggingDelegatingHandler>()
 	.AddStandardResilienceHandler();
 
 services.AddQuartz(q =>
