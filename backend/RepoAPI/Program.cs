@@ -32,19 +32,11 @@ services.Configure<JsonOptions>(o =>
 
 var userAgent = builder.Configuration["RefitSettings:UserAgent"] ?? "RepoAPI/1.0 (+https://skyblockrepo.com/)";
 
-services.AddRefitClient<IWikiApi>()
-	.ConfigureHttpClient(c =>
-	{
-		c.BaseAddress = new Uri("https://wiki.hypixel.net/");
-		c.DefaultRequestHeaders.Add("User-Agent", userAgent);
-		c.Timeout = TimeSpan.FromSeconds(10);
-	})
-	.AddHttpMessageHandler<LoggingDelegatingHandler>()
-	.AddStandardResilienceHandler();
-
 services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, userAgent)
 	.AddHttpMessageHandler<LoggingDelegatingHandler>()
 	.AddStandardResilienceHandler();
+
+builder.AddWikiClient();
 
 services.AddQuartz(q =>
 {

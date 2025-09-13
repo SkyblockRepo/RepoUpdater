@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Data;
 using RepoAPI.Features.Enchantments.Services;
-using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Pets.Services;
 using RepoAPI.Features.Recipes.Services;
 
@@ -76,17 +75,17 @@ public class WikiDataInitService(
 		// await InitializeWikiItems(ct);
 		
 		var petsExist = await context.SkyblockPets.AnyAsync(ct);
-		if (petsExist) {
+		if (!petsExist) {
 			await petsIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		
 		var recipesExist = await context.SkyblockRecipes.AnyAsync(ct);
-		if (recipesExist) {
+		if (!recipesExist) {
 			await recipeIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		
 		var enchantsExist = await context.SkyblockEnchantments.AnyAsync(ct);
-		if (enchantsExist) {
+		if (!enchantsExist) {
 			await enchantmentIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		// await InitializeAttributeShards(ct);
