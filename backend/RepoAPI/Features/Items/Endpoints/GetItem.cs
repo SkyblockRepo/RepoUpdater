@@ -13,10 +13,9 @@ internal class GetItemRequest
 internal class GetItemResponse
 {
 	public SkyblockItemDto? Item { get; set; }
-	public ItemTemplateDto? Template { get; set; }
 }
 
-internal class GetItemEndpoint(IItemService itemService, IWikiDataService dataService) : Endpoint<GetItemRequest, GetItemResponse>
+internal class GetItemEndpoint(IItemService itemService) : Endpoint<GetItemRequest, GetItemResponse>
 {
 	public override void Configure()
 	{

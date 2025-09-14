@@ -10,7 +10,7 @@ internal class GetPetRequest
 
 internal class GetPetResponse
 {
-	public SkyblockPet? Pet { get; set; }
+	public SkyblockPetDto? Pet { get; set; }
 }
 
 internal class GetPetEndpoint(IPetService itemService) : Endpoint<GetPetRequest, GetPetResponse>
@@ -33,11 +33,16 @@ internal class GetPetEndpoint(IPetService itemService) : Endpoint<GetPetRequest,
 
 	public override async Task HandleAsync(GetPetRequest req, CancellationToken ct)
 	{
-		var item = await itemService.GetPetByIdAsync(req.Id, ct);
+		var pet = await itemService.GetPetByIdAsync(req.Id, ct);
+		
+		if (pet is null) {
+			await Send.NotFoundAsync(ct);
+			return;
+		}
 
 		await Send.OkAsync(new GetPetResponse
 		{
-			Pet = item
+			Pet = pet.ToDto()
 		}, ct);
 	}
 }

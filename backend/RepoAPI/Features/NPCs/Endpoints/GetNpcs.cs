@@ -26,10 +26,10 @@ internal class GetNpcsEndpoint(INpcService npcService) : Endpoint<GetNpcRequest,
 			s.Description = "Retrieves the details of all npcs.";
 		});
 		
-		// ResponseCache(30);
-		// Options(o => {
-		// 	o.CacheOutput(c => c.Expire(TimeSpan.FromSeconds(30)));
-		// });
+		ResponseCache(30);
+		Options(o => {
+			o.CacheOutput(c => c.Expire(TimeSpan.FromSeconds(30)));
+		});
 	}
 
 	public override async Task HandleAsync(GetNpcRequest request, CancellationToken ct)

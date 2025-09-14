@@ -10,7 +10,7 @@ internal class GetNpcRequest
 
 internal class GetNpcResponse
 {
-	public SkyblockNpc? Npc { get; set; }
+	public SkyblockNpcDto? Npc { get; set; }
 }
 
 internal class GetNpcEndpoint(INpcService itemService) : Endpoint<GetNpcRequest, GetNpcResponse>
@@ -33,11 +33,16 @@ internal class GetNpcEndpoint(INpcService itemService) : Endpoint<GetNpcRequest,
 
 	public override async Task HandleAsync(GetNpcRequest req, CancellationToken ct)
 	{
-		var item = await itemService.GetNpcByIdAsync(req.Id, ct);
+		var npc = await itemService.GetNpcByIdAsync(req.Id, ct);
+		
+		if (npc is null) {
+			await Send.NotFoundAsync(ct);
+			return;
+		}
 
 		await Send.OkAsync(new GetNpcResponse
 		{
-			Npc = item
+			Npc = npc.ToDto()
 		}, ct);
 	}
 }
