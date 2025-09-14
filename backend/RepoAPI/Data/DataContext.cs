@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RepoAPI.Core.Models;
 using RepoAPI.Features.Enchantments.Models;
+using RepoAPI.Features.NPCs.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Util;
@@ -48,6 +49,7 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
     public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<SkyblockItemRecipeLink> SkyblockItemRecipeLinks => Set<SkyblockItemRecipeLink>();
     public DbSet<SkyblockEnchantment> SkyblockEnchantments => Set<SkyblockEnchantment>();
+    public DbSet<SkyblockNpc> SkyblockNpcs => Set<SkyblockNpc>();
     
     public DbSet<PendingEntityChange> PendingEntityChanges => Set<PendingEntityChange>();
     public DbSet<PendingDeprecation> PendingDeprecations => Set<PendingDeprecation>();

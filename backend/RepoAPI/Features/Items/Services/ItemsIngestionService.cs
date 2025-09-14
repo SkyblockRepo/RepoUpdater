@@ -73,7 +73,7 @@ public class ItemsIngestionService(
                     // Copy over data that isn't from the API, like wiki text
                     RawTemplate = existingItem.RawTemplate,
                     Lore = existingItem.Lore,
-                    Source = "HypixelAPI",
+                    Source = existingItem.Source ?? "HypixelAPI",
                     Flags = existingItem.Flags,
                     Category = existingItem.Category,
                 };

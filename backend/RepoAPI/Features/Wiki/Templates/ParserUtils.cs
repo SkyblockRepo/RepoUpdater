@@ -215,9 +215,41 @@ public static partial class ParserUtils
         {
             text = InnermostTemplateRegex().Replace(text, match => match.Groups[1].Value.Split('|').LastOrDefault() ?? "");
         }
-
-        // Step 5: Final cleanup of formatting and whitespace.
+        
         text = preserveBreaks ? text.Replace("<br>", "\n") : text.Replace("<br>", " ");
+        text = text.Replace("'''", "").Replace("''", "");
+        text = SpaceRegex().Replace(text, " ").Trim();
+        
+        return text;
+    }
+    
+    /// <summary>
+    /// Extracts the colored text from the first color template found in the wikitext.
+    /// Example: {{color|red|Some Text}} -> "Some Text"
+    /// </summary>
+    /// <param name="wikitext"></param>
+    /// <returns></returns>
+    public static string GetStringFromColorTemplate(string? wikitext)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext)) return string.Empty;
+
+        var match = ColorTextRegex().Match(wikitext);
+        return match.Success ? CleanWikitext(match.Groups[1].Value.Trim()) : CleanWikitext(wikitext);
+    }
+    
+    public static string GetNameFromFileLink(string? wikitext)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext)) return string.Empty;
+
+        var text = wikitext;
+        
+        text = FileLinkRegex().Replace(text, "");
+        
+        while (WikiLinkRegex().IsMatch(text))
+        {
+            text = WikiLinkRegex().Replace(text, "$1");
+        }
+
         text = text.Replace("'''", "").Replace("''", "");
         text = SpaceRegex().Replace(text, " ").Trim();
         
@@ -278,4 +310,7 @@ public static partial class ParserUtils
     {
         return JsonNode.DeepEquals(oldData, newData);
     }
+
+    [GeneratedRegex(@"\{\{color\|[^|]+\|([^}]+)\}\}", RegexOptions.IgnoreCase, "en-US")]
+    private static partial Regex ColorTextRegex();
 }

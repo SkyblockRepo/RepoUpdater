@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Data;
 using RepoAPI.Features.Enchantments.Services;
+using RepoAPI.Features.NPCs.Services;
 using RepoAPI.Features.Pets.Services;
 using RepoAPI.Features.Recipes.Services;
 
@@ -14,6 +15,7 @@ public class WikiDataInitService(
 	RecipeIngestionService recipeIngestionService,
 	EnchantmentIngestionService enchantmentIngestionService,
 	PetsIngestionService petsIngestionService,
+	NpcIngestionService npcIngestionService,
 	HybridCache hybridCache)
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
@@ -68,6 +70,26 @@ public class WikiDataInitService(
 				LocalCacheExpiration = TimeSpan.FromMinutes(10)
 			}, 
 			cancellationToken: ct);
+		
+		await hybridCache.GetOrCreateAsync(
+			"npcs-exist",
+			async c => {
+				try
+				{
+					await npcIngestionService.FetchAndLoadDataAsync(c);
+					return true;
+				}
+				catch
+				{
+					return false;
+				}
+			},
+			options: new HybridCacheEntryOptions
+			{
+				Expiration = TimeSpan.FromMinutes(10),
+				LocalCacheExpiration = TimeSpan.FromMinutes(10)
+			}, 
+			cancellationToken: ct);
 	}
 	
 	public async Task InitializeWikiDataAsync(CancellationToken ct)
@@ -87,6 +109,11 @@ public class WikiDataInitService(
 		var enchantsExist = await context.SkyblockEnchantments.AnyAsync(ct);
 		if (!enchantsExist) {
 			await enchantmentIngestionService.FetchAndLoadDataAsync(ct);
+		}
+		
+		var npcsExist = await context.SkyblockNpcs.AnyAsync(ct);
+		if (!npcsExist) {
+			await npcIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		// await InitializeAttributeShards(ct);
 	}

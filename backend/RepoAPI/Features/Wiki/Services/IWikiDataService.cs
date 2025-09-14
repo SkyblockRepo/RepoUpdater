@@ -1,4 +1,5 @@
 using RepoAPI.Features.Items.ItemTemplate;
+using RepoAPI.Features.NPCs.NpcTemplate;
 using RepoAPI.Features.Pets.PetTemplate;
 using RepoAPI.Features.Wiki.Templates;
 using RepoAPI.Features.Wiki.Templates.AttributeList;
@@ -15,9 +16,11 @@ public interface IWikiDataService
 	Task<Dictionary<string, WikiTemplateData<ItemTemplateDto>?>> BatchGetItemData(List<string> itemIds, bool templates = false);
 	Task<Dictionary<string, WikiTemplateData<RecipeTemplateDto>?>> BatchGetRecipeData(List<string> recipeTemplates);
 	Task<Dictionary<string, WikiTemplateData<PetTemplateDto>?>> BatchGetPetData(List<string> petTemplates);
+	Task<Dictionary<string, WikiTemplateData<NpcTemplateDto>?>> BatchGetNpcData(List<string> petIds);
 	Task<List<string>> GetAllWikiItemsAsync();
 	Task<List<string>> GetAllWikiEnchantmentsAsync();
 	Task<List<string>> GetAllWikiPetsAsync();
+	Task<List<string>> GetAllWikiNpcsAsync();
 	Task<List<string>> GetAllWikiRecipesAsync();
 	Task<List<string>> GetAllLootTablesAsync();
 	Task<string> GetPageContentAsync(string title);
@@ -33,6 +36,7 @@ public class WikiDataService(IWikiApi wikiApi) : IWikiDataService
 	public ITemplateParser<ItemTemplateDto> ItemTemplateParser { get; } = new ItemTemplateParser();
 	public ITemplateParser<PetTemplateDto> PetTemplateParser { get; } = new PetTemplateParser();
 	public ITemplateParser<AttributeListTemplateDto> AttributeListParser { get; } = new AttributeListParser();
+	public ITemplateParser<NpcTemplateDto> NpcTemplateParser { get; } = new NpcTemplateParser();
 	
 	public async Task<RecipeTemplateDto?> GetRecipeData(string itemId)
 	{
@@ -154,6 +158,32 @@ public class WikiDataService(IWikiApi wikiApi) : IWikiDataService
 		return result;
 	}
 	
+	public async Task<Dictionary<string, WikiTemplateData<NpcTemplateDto>?>> BatchGetNpcData(List<string> petTemplates)
+	{
+		var titles = string.Join("|", petTemplates);
+		var apiResponse = await wikiApi.GetTemplateContentAsync(titles);
+		
+		var result = new Dictionary<string, WikiTemplateData<NpcTemplateDto>?>();
+		
+		foreach (var page in apiResponse.Query.Pages.Values) 
+		{
+			var wikitext = page.Revisions.FirstOrDefault()?.Slots.Main.Content;
+			if (wikitext is null) continue;
+			
+			var data = new WikiTemplateData<NpcTemplateDto>(NpcTemplateParser.Parse(wikitext), wikitext);
+			var internalId = data.Data?.InternalId;
+			if (internalId is null) continue;
+			
+			if (string.IsNullOrEmpty(wikitext)) {
+				result[internalId] = null;
+			} else {
+				result[internalId] = new WikiTemplateData<NpcTemplateDto>(NpcTemplateParser.Parse(wikitext), wikitext);
+			}
+		}
+		
+		return result;
+	}
+	
 	public async Task<List<string>> GetAllWikiItemsAsync()
 	{
 		return await GetWikiCategoryAsync("DataItem");
@@ -168,7 +198,12 @@ public class WikiDataService(IWikiApi wikiApi) : IWikiDataService
 	{
 		return await GetWikiCategoryAsync("DataPet");
 	}
-	
+
+	public async Task<List<string>> GetAllWikiNpcsAsync()
+	{
+		return await GetWikiCategoryAsync("DataNPC");
+	}
+
 	public async Task<List<string>> GetAllWikiRecipesAsync()
 	{
 		return await GetWikiCategoryAsync("DataRecipe");
