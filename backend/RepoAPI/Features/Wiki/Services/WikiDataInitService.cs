@@ -119,7 +119,7 @@ public class WikiDataInitService(
 		}
 		
 		var zonesExist = await context.SkyblockZones.AnyAsync(ct);
-		if (zonesExist) { // TODO: Change to !zonesExist
+		if (!zonesExist) {
 			await zoneIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		// await InitializeAttributeShards(ct);
