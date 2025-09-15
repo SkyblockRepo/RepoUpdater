@@ -5,6 +5,7 @@ using RepoAPI.Features.Enchantments.Services;
 using RepoAPI.Features.NPCs.Services;
 using RepoAPI.Features.Pets.Services;
 using RepoAPI.Features.Recipes.Services;
+using RepoAPI.Features.Zones.Services;
 
 namespace RepoAPI.Features.Wiki.Services;
 
@@ -16,6 +17,7 @@ public class WikiDataInitService(
 	EnchantmentIngestionService enchantmentIngestionService,
 	PetsIngestionService petsIngestionService,
 	NpcIngestionService npcIngestionService,
+	ZoneIngestionService zoneIngestionService,
 	HybridCache hybridCache)
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
@@ -114,6 +116,11 @@ public class WikiDataInitService(
 		var npcsExist = await context.SkyblockNpcs.AnyAsync(ct);
 		if (!npcsExist) {
 			await npcIngestionService.FetchAndLoadDataAsync(ct);
+		}
+		
+		var zonesExist = await context.SkyblockZones.AnyAsync(ct);
+		if (zonesExist) { // TODO: Change to !zonesExist
+			await zoneIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		// await InitializeAttributeShards(ct);
 	}

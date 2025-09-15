@@ -16,7 +16,7 @@ public class NpcService(DataContext context, HybridCache cache) : INpcService
 {
 	public ValueTask<SkyblockNpc?> GetNpcByIdAsync(string id, CancellationToken ct) =>
 		cache.GetOrCreateAsync(
-			$"item-id-{id}",
+			$"npc-id-{id}",
 			async c =>
 			{
 				return await context.SkyblockNpcs.FirstOrDefaultAsync(s => s.InternalId == id, c);

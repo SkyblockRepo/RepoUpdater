@@ -1,7 +1,7 @@
 using RepoAPI.Features.NPCs.Models;
 using RepoAPI.Features.NPCs.Services;
 
-namespace RepoAPI.Features.Npcs.Endpoints;
+namespace RepoAPI.Features.NPCs.Endpoints;
 
 internal class GetNpcRequest
 {

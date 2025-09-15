@@ -6,6 +6,7 @@ using RepoAPI.Features.Enchantments.Models;
 using RepoAPI.Features.NPCs.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Recipes.Models;
+using RepoAPI.Features.Zones.Models;
 using RepoAPI.Util;
 
 namespace RepoAPI.Data;
@@ -50,6 +51,7 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
     public DbSet<SkyblockItemRecipeLink> SkyblockItemRecipeLinks => Set<SkyblockItemRecipeLink>();
     public DbSet<SkyblockEnchantment> SkyblockEnchantments => Set<SkyblockEnchantment>();
     public DbSet<SkyblockNpc> SkyblockNpcs => Set<SkyblockNpc>();
+    public DbSet<SkyblockZone> SkyblockZones => Set<SkyblockZone>();
     
     public DbSet<PendingEntityChange> PendingEntityChanges => Set<PendingEntityChange>();
     public DbSet<PendingDeprecation> PendingDeprecations => Set<PendingDeprecation>();

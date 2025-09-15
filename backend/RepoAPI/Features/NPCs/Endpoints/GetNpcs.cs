@@ -3,18 +3,18 @@ using RepoAPI.Features.NPCs.Services;
 
 namespace RepoAPI.Features.NPCs.Endpoints;
 
-internal class GetNpcRequest
+internal class GetNpcsRequest
 {
 	[QueryParam]
 	public string? Source { get; set; }
 }
 
-internal class GetNpcResponse
+internal class GetNpcsResponse
 {
 	public Dictionary<string, SkyblockNpcDto> Npcs { get; set; } = new();
 }
 
-internal class GetNpcsEndpoint(INpcService npcService) : Endpoint<GetNpcRequest, GetNpcResponse>
+internal class GetNpcsEndpoint(INpcService npcService) : Endpoint<GetNpcsRequest, GetNpcsResponse>
 {
 	public override void Configure()
 	{
@@ -32,11 +32,11 @@ internal class GetNpcsEndpoint(INpcService npcService) : Endpoint<GetNpcRequest,
 		});
 	}
 
-	public override async Task HandleAsync(GetNpcRequest request, CancellationToken ct)
+	public override async Task HandleAsync(GetNpcsRequest request, CancellationToken ct)
 	{
 		var items = await npcService.GetAllNpcsAsync(ct, request.Source);
 
-		var result = new GetNpcResponse
+		var result = new GetNpcsResponse
 		{
 			Npcs = items.ToDictionary(i => i.InternalId, i => i)
 		};

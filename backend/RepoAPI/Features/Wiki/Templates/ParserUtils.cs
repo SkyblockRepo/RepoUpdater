@@ -259,6 +259,40 @@ public static partial class ParserUtils
     [GeneratedRegex(@"\s+")]
     private static partial Regex SpaceRegex();
     
+    /// <summary>
+    /// Gets a list item from a bulleted line
+    /// Example: * [[File:Minecraft_sprite_entity_spider.png|15px|link=Dasher Spider]] [[Spider]]\n
+    /// Output: { Link = "Dasher Spider", Name = "Spider" }
+    /// </summary>
+    [GeneratedRegex(@"^\*\s*(?:\[\[File:[^\]]+\|(?:15px\|)?link=([^\]]+)\]\]\s*)?(?:\[\[(?:[^|\]]+\|)?([^\]]+)\]\])", RegexOptions.Multiline)]
+    private static partial Regex WikiLinkItemRegex();
+    
+    /// <summary>
+    /// Gets a list of referenced items from a property
+    /// Example: * [[File:Minecraft_sprite_entity_spider.png|15px|link=Dasher Spider]] [[Spider]]\n* [[File:Minecraft_sprite_entity_bat.png|15px|link=Mega Bat]] [[Mega Bat]]
+    /// Output: [ { Link = "Dasher Spider", Name = "Spider" }, { Link = "Mega Bat", Name = "Mega Bat" } ]
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    public static List<ListItem> GetListFromProperty(string? input)
+    {
+        var list = new List<ListItem>();
+        if (string.IsNullOrWhiteSpace(input)) return list;
+
+        var matches = WikiLinkItemRegex().Matches(input);
+        foreach (Match match in matches)
+        {
+            var link = match.Groups[1].Success ? match.Groups[1].Value.Trim() : match.Groups[2].Value.Trim();
+            var name = match.Groups[2].Value.Trim();
+            if (!string.IsNullOrEmpty(name))
+            {
+                list.Add(new ListItem(link, name));
+            }
+        }
+
+        return list;
+    }
+    
     public static bool TryParseRoman(this string roman, out int value)
     {
         try {
@@ -314,3 +348,5 @@ public static partial class ParserUtils
     [GeneratedRegex(@"\{\{color\|[^|]+\|([^}]+)\}\}", RegexOptions.IgnoreCase, "en-US")]
     private static partial Regex ColorTextRegex();
 }
+
+public record struct ListItem(string Link, string Name);

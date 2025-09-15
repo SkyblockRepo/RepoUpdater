@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
-using Microsoft.VisualBasic;
-using RepoAPI.Features.Pets.Models;
+using RepoAPI.Features.Wiki.Templates;
 
 namespace RepoAPI.Features.NPCs.NpcTemplate;
 
@@ -47,8 +46,6 @@ public class NpcGardenVisitor
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public double FarmingXp { get; set; } = 0;
 }
-
-public record struct Coordinates(double X, double Y, double Z);
 
 public record struct NpcFlags()
 {
