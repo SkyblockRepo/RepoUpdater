@@ -155,15 +155,9 @@ public class GitSyncService(
 
         // Fetch and check out branch
         await RunGitAsync("fetch origin", _outputBasePath);
-        var (branchExistsCode, _) = await RunGitAsync($"rev-parse --verify {branch}", _outputBasePath);
-
-        if (branchExistsCode != 0) {
-            await RunGitAsync($"checkout -b {branch} origin/{_config.MainBranch}", _outputBasePath);
-            await RunGitAsync($"push -u origin {branch}", _outputBasePath);
-        } else {
-            await RunGitAsync($"checkout {branch}", _outputBasePath);
-            await RunGitAsync($"merge origin/{_config.MainBranch}", _outputBasePath);
-        }
+        
+        // Create or reset the target branch from the latest main branch.
+        await RunGitAsync($"checkout -B {branch} origin/{_config.MainBranch}", _outputBasePath);
 
         await RunGitAsync($"branch --set-upstream-to=origin/{branch} {branch}", _outputBasePath);
 
@@ -197,7 +191,7 @@ public class GitSyncService(
             return;
         }
 
-        var (pushExitCode, pushOutput) = await RunGitAsync($"push origin {branch} --force", _outputBasePath);
+        var (pushExitCode, pushOutput) = await RunGitAsync($"push -u origin {branch} --force", _outputBasePath);
 
         if (pushExitCode == 0)
         {
