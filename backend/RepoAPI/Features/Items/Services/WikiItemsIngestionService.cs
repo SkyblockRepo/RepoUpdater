@@ -1,10 +1,8 @@
-using HypixelAPI;
 using Microsoft.EntityFrameworkCore;
 using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Wiki.Services;
-using RepoAPI.Features.Wiki.Templates;
 
 namespace RepoAPI.Features.Items.Services;
 

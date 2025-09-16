@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Text.Json;
-using HypixelAPI.DTOs;
+using EliteFarmers.HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RepoAPI.Features.Items.Models;

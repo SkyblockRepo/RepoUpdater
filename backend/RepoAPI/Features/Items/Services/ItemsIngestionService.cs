@@ -1,5 +1,5 @@
-using HypixelAPI;
-using HypixelAPI.DTOs;
+using EliteFarmers.HypixelAPI;
+using EliteFarmers.HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Data;
@@ -22,8 +22,8 @@ public class ItemsIngestionService(
     ILogger<ItemsIngestionService> logger) 
 {
     public async Task IngestItemsDataAsync() {
-        var apiResponse = await hypixelApi.FetchItems();
-        var bazaarResponse = await hypixelApi.FetchBazaar();
+        var apiResponse = await hypixelApi.FetchItemsAsync();
+        var bazaarResponse = await hypixelApi.FetchBazaarAsync();
         
         if (!apiResponse.IsSuccessStatusCode || apiResponse.Content is not { Success: true }) {
             var errorContent = apiResponse.Error != null

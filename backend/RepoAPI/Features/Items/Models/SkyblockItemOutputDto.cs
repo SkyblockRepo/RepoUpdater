@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using HypixelAPI.DTOs;
+using EliteFarmers.HypixelAPI.DTOs;
 using RepoAPI.Features.Recipes.Models;
 using Riok.Mapperly.Abstractions;
 

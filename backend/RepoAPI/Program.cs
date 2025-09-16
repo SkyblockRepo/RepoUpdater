@@ -1,13 +1,11 @@
 using System.Net;
 using System.Text.Json;
+using EliteFarmers.HypixelAPI;
 using RepoAPI.Data;
 using RepoAPI.Util;
-using HypixelAPI;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.HttpOverrides;
 using Quartz;
-using Refit;
-using RepoAPI.Features.Wiki.Services;
 using IPNetwork = Microsoft.AspNetCore.HttpOverrides.IPNetwork;
 
 var builder = WebApplication.CreateBuilder();
@@ -32,7 +30,11 @@ services.Configure<JsonOptions>(o =>
 
 var userAgent = builder.Configuration["RefitSettings:UserAgent"] ?? "RepoAPI/1.0 (+https://skyblockrepo.com/)";
 
-services.AddHypixelApi(builder.Configuration["HypixelApiKey"] ?? string.Empty, userAgent)
+services.AddHypixelApi(opt =>
+	{
+		opt.ApiKey = builder.Configuration["HypixelApiKey"] ?? string.Empty;
+		opt.UserAgent = userAgent;
+	})
 	.AddHttpMessageHandler<LoggingDelegatingHandler>()
 	.AddStandardResilienceHandler();
 

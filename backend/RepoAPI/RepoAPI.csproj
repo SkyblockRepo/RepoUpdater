@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <PackageReference Include="DiffPlex" Version="1.8.0" />
+        <PackageReference Include="EliteFarmers.HypixelAPI" Version="1.0.0" />
         <PackageReference Include="FastEndpoints" Version="7.0.1" />
         <PackageReference Include="FastEndpoints.Generator" Version="7.0.1">
           <PrivateAssets>all</PrivateAssets>
@@ -19,6 +20,7 @@
         </PackageReference>
         <PackageReference Include="FastEndpoints.Swagger" Version="7.0.1" />
         <PackageReference Include="FastEndpoints.Testing" Version="7.0.1" />
+        <PackageReference Include="Humanizer.Core" Version="2.14.1" />
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
         <PackageReference Include="Microsoft.AspNetCore.OutputCaching.StackExchangeRedis" Version="9.0.8" />
@@ -41,10 +43,6 @@
         <PackageReference Include="Scalar.AspNetCore" Version="2.7.0" />
         <PackageReference Include="StackExchange.Redis" Version="2.9.11" />
         <PackageReference Include="TimeSpanParserUtil" Version="1.2.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\HypixelAPI\HypixelAPI.csproj" />
     </ItemGroup>
 
     <ItemGroup>
