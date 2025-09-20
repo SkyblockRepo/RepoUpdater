@@ -245,7 +245,7 @@ public class GitSyncService(
         }
     }
 
-    private static async Task<(int ExitCode, string Output)> RunGitAsync(string arguments, string workingDir)
+    private async Task<(int ExitCode, string Output)> RunGitAsync(string arguments, string workingDir)
     {
         var psi = new ProcessStartInfo("git", arguments)
         {
@@ -262,6 +262,12 @@ public class GitSyncService(
         output.AppendLine(await process.StandardError.ReadToEndAsync());
 
         await process.WaitForExitAsync();
+        
+        if (process.ExitCode != 0)
+        {
+            logger.LogInformation("Git command 'git {Arguments}' failed with exit code {ProcessExitCode}.", arguments, process.ExitCode);
+        }
+        
         return (process.ExitCode, output.ToString());
     }
 
