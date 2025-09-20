@@ -4,12 +4,12 @@ using RepoAPI.Util;
 
 namespace RepoAPI.Features.Output.Services;
 
+[RegisterService<ScriptRunnerService>(LifeTime.Scoped)]
 public class ScriptRunnerService(
     ILogger<ScriptRunnerService> logger,
     IServiceProvider serviceProvider,
     JsonWriteQueue jsonWriteQueue
-) : BackgroundService, ISelfRegister
-{
+) {
     private readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
     private readonly string _scriptsBasePath = Path.Combine(GetOutputBasePath(), "..", "overrides");
     
@@ -21,9 +21,6 @@ public class ScriptRunnerService(
             logger.LogWarning("No run.ts script found at {File}", file);
             return;
         }
-        
-        // Delay git operations while scripts are running
-        JsonWriteQueue.LastWriteQueuedAt = DateTimeOffset.UtcNow.AddMinutes(2); 
         
         var (versionExitCode, version) = await RunNodeAsync("--version", _scriptsBasePath);
         if (versionExitCode != 0) {
@@ -49,7 +46,7 @@ public class ScriptRunnerService(
         }
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); // Initial delay to allow other services to start
         logger.LogInformation("Script runner service started.");
@@ -111,10 +108,5 @@ public class ScriptRunnerService(
         return currentDir != null
             ? Path.Combine(currentDir.FullName, "..", "output")
             : Path.Combine(AppContext.BaseDirectory, "..", "output");
-    }
-
-    public static void Configure(IServiceCollection services, ConfigurationManager config)
-    {
-        services.AddHostedService<ScriptRunnerService>();
     }
 }

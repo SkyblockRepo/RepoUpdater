@@ -12,7 +12,8 @@ public class GitSyncService(
     ILogger<GitSyncService> logger,
     IOptions<GitSyncOptions> gitSyncOptions,
     IServiceProvider serviceProvider,
-    JsonWriteQueue jsonWriteQueue
+    JsonWriteQueue jsonWriteQueue,
+    ScriptRunnerService scriptRunnerService
 ) : BackgroundService, ISelfRegister
 {
     private readonly GitSyncOptions _config = gitSyncOptions.Value;
@@ -120,6 +121,8 @@ public class GitSyncService(
                 await ApplyOverridesAsync(stoppingToken);
                 ApplyExclusions();
                 CopyManifest();
+                
+                await scriptRunnerService.ExecuteAsync(stoppingToken);
                 
                 await CommitAndPushAsync(gitHubClient);
             }
