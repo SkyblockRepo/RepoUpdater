@@ -48,27 +48,14 @@ public class ScriptRunnerService(
 
     public async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); // Initial delay to allow other services to start
         logger.LogInformation("Script runner service started.");
         
-        await RunScriptsAsync(stoppingToken);
-        
-        while (!stoppingToken.IsCancellationRequested)
+        try {
+            await RunScriptsAsync(stoppingToken);
+        }
+        catch (Exception ex)
         {
-            if (JsonWriteQueue.WasRecentlyQueued()) {
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
-                continue; // Wait until the write queue is empty before proceeding
-            }
-            
-            try {
-                await RunScriptsAsync(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred during the git sync cycle.");
-            }
-
-            await Task.Delay(_interval, stoppingToken);
+            logger.LogError(ex, "An error occurred during the git sync cycle.");
         }
     }
     
