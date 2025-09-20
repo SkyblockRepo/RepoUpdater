@@ -34,10 +34,10 @@ public static partial class WikiTableParser
         return cleaned;
     }
 
-    public static WikiTable Parse(string wikitext)
+    public static WikiTable Parse(string wikitext, string backupId = "")
     {
         var table = new WikiTable();
-        wikitext = wikitext.Replace("\r\n", "\n");
+        wikitext = ParserUtils.ExtractIncludeOnlyContent(wikitext).Replace("\r\n", "\n").Replace("\\n", "\n");
         
         // Split into logical lines
         var lines = wikitext.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -46,6 +46,7 @@ public static partial class WikiTableParser
         var rows = new List<List<string>>();
         var currentRow = new List<string>();
         var headerRowSpan = 1;
+        var headerColSpan = 1;
 
         foreach (var line in lines)
         {
@@ -57,39 +58,54 @@ public static partial class WikiTableParser
                     headerRowSpan = Math.Max(headerRowSpan, span);
                 }
             }
+            
+            if (ColspanRegex().Match(trimmed) is { Success: true } colspanMatch)
+            {
+                if (int.TryParse(colspanMatch.Groups["colspan"].Value, out var span))
+                {
+                    headerColSpan = Math.Max(headerColSpan, span);
+                }
+            }
+            
+            if (trimmed.StartsWith('!'))
+            {
+                headerLines.Add(trimmed.TrimStart('!').Trim());
+                continue;
+            }
 
             if (headerRowSpan > 0)
             {
-                if (trimmed.StartsWith('!'))
-                {
-                    headerLines.Add(trimmed.TrimStart('!').Trim());
-                    continue;
-                }
-
-                if (trimmed.StartsWith("{{!}}-"))
+                if (trimmed.StartsWith("{{!}}-") && headerLines.Count >= headerColSpan)
                 {
                     headerRowSpan--;
                     continue; // Still in header rows
                 }
 
-                if (trimmed.StartsWith("{{!}}"))
+                if (trimmed.StartsWith("{{!}}") && !trimmed.StartsWith("{{!}}-"))
                 {
                     headerLines.Add(trimmed.Replace("{{!}}", "").Trim());
                     continue;
                 }
             }
-            
-            if (trimmed.StartsWith("{{!}}-"))
+            else
             {
-                if (currentRow.Count > 0)
+                if (trimmed.StartsWith("{{!}}-"))
                 {
-                    rows.Add([..currentRow]);
-                    currentRow.Clear();
+                    if (currentRow.Count > 0)
+                    {
+                        rows.Add([..currentRow]);
+                        currentRow.Clear();
+                    }
                 }
-            }
-            else if (trimmed.StartsWith("{{!}}"))
-            {
-                currentRow.Add(trimmed.Replace("{{!}}", "").Trim());
+                else if (trimmed.StartsWith("{{!}}"))
+                {
+                    currentRow.Add(trimmed.Replace("{{!}}", "").Trim());
+                } else {
+                    // Add this string to the last cell if it exists
+                    if (currentRow.Count > 0) {
+                        currentRow[^1] += "\n" + trimmed;
+                    }
+                }
             }
         }
 

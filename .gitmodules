@@ -1,3 +1,6 @@
 [submodule "output"]
 	path = output
 	url = https://github.com/SkyblockRepo/Repo
+[submodule "overrides"]
+	path = overrides
+	url = https://github.com/SkyblockRepo/RepoOverrides

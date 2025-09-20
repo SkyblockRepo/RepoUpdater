@@ -1,5 +1,8 @@
 using System.Net;
 using FastEndpoints;
+using Microsoft.Extensions.DependencyInjection;
+using RepoAPI.Core.Models;
+using RepoAPI.Features.Wiki.Services;
 using Xunit;
 
 namespace RepoAPI.Tests.Features;

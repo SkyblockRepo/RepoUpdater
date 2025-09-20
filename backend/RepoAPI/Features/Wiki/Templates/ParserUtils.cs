@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Humanizer;
 
@@ -74,7 +75,11 @@ public static partial class ParserUtils
         const string endTag = "</includeonly>";
 
         var startIndex = wikitext.IndexOf(startTag, StringComparison.OrdinalIgnoreCase);
-        if (startIndex == -1) return wikitext; // Fallback to full text if tag not found
+        if (startIndex == -1)
+        {
+            // Replace any <noinclude>...</noinclude> tags with empty string
+            return MatchNoIncludeRegex().Replace(wikitext, "");
+        }
 
         startIndex += startTag.Length;
 
@@ -83,6 +88,9 @@ public static partial class ParserUtils
             ? wikitext 
             : wikitext.Substring(startIndex, endIndex - startIndex);
     }
+
+    [GeneratedRegex(@"\<noinclude\>.*?\<\/noinclude\>", RegexOptions.Singleline)]
+    public static partial Regex MatchNoIncludeRegex();
 
     public static Dictionary<string, string> GetPropDictionary(string wikitext)
     { 
@@ -127,6 +135,9 @@ public static partial class ParserUtils
     
     [GeneratedRegex(@"'''(.*?)'''", RegexOptions.Singleline)]
     private static partial Regex BoldContentsRegex();
+    
+    [GeneratedRegex(@"<!--(.*?)-->", RegexOptions.Singleline)]
+    private static partial Regex HtmlCommentRegex();
 
     /// <summary>
     /// Parses the special comma-separated lore format from an Item template
@@ -161,6 +172,71 @@ public static partial class ParserUtils
         return loreText;
     }
 
+    public record struct LoreParseResult(
+        string? CleanLore,
+        string? ItemName,
+        string? Material,
+        string? Rarity,
+        int Count = 0);
+    
+    /// <summary>
+    /// Parses the special comma-separated lore format from an Item template
+    /// into a clean, multi-line string with Minecraft formatting codes.
+    /// </summary>
+    /// <param name="rawLore">The raw lore string, e.g., "mc,legendary,id:name,1,&7Health..."</param>
+    /// <returns>A LoreParseResult containing the clean lore, item name, identifier, and rarity.</returns>
+    public static LoreParseResult ParseLoreString(string rawLore)
+    {
+        // Split the string into a maximum of 5 parts. The 5th part will contain
+        // the entire rest of the string, preserving any commas within the lore.
+        rawLore = rawLore.Replace("<nowiki>,", "<nowiki>|");
+
+        if (rawLore.StartsWith("{{"))
+        {
+            var lore = rawLore;
+        
+            lore = lore.Replace("<nowiki>|", "<nowiki>,").Replace(@"\\n", "\n");
+        
+            // Remove any <nowiki>...</nowiki> tags, preserving their inner content
+            lore = NoWikiContentsRegex().Replace(lore, match => match.Groups[1].Value);
+            // Convert bold formatting to Minecraft's &l code
+            lore = BoldContentsRegex().Replace(lore, match => $"&l{match.Groups[1].Value}&r");
+            
+            // Check for quantity suffix and extract it
+            var quantityMatch = LoreQuantityRegex().Match(lore);
+            if (quantityMatch.Success && int.TryParse(quantityMatch.Groups[1].Value, out var count))
+            {
+                lore = lore[..quantityMatch.Index];
+                return new LoreParseResult(lore, null, null, null, count);
+            }
+            
+            return new LoreParseResult(lore, null, null, null);
+        }
+        
+        var parts = rawLore.Split([','], 5);
+        
+        var rarity = parts.Length > 1 ? parts[1].Trim().ToUpperInvariant().Replace(" ", "") : null;
+        var itemIdentifierPart = parts.Length > 2 ? parts[2].Trim() : null;
+        var itemIdentifierParts = itemIdentifierPart?.Split([':'], 2);
+        var material = itemIdentifierParts is { Length: > 0 } ? itemIdentifierParts[0] : null;
+        var itemName = itemIdentifierParts is { Length: > 1 } ? itemIdentifierParts[1].Replace("_", " ") : null;
+
+        var loreText = parts.LastOrDefault() ?? "";
+        
+        loreText = loreText.Replace("<nowiki>|", "<nowiki>,").Replace(@"\\n", "\n");
+        
+        // Remove any <nowiki>...</nowiki> tags, preserving their inner content
+        loreText = NoWikiContentsRegex().Replace(loreText, match => match.Groups[1].Value);
+        // Convert bold formatting to Minecraft's &l code
+        loreText = BoldContentsRegex().Replace(loreText, match => $"&l{match.Groups[1].Value}&r");
+
+        if (loreText == material) {
+            loreText = null;
+        }
+
+        return new LoreParseResult(loreText, itemName, material, rarity);
+    }
+
     /// <summary>
     /// Gets a numeric value from a wikitext template, stripping formatting and links.
     /// Example: {{Coins|500,000}} -> 500000
@@ -181,6 +257,9 @@ public static partial class ParserUtils
 
         return 0;
     }
+    
+    [GeneratedRegex(@",(\d+)$")]
+    private static partial Regex LoreQuantityRegex();
     
     [GeneratedRegex(@"^\s*style[^|]+\|")]
     private static partial Regex StylePrefixRegex();
@@ -220,7 +299,19 @@ public static partial class ParserUtils
         text = text.Replace("'''", "").Replace("''", "");
         text = SpaceRegex().Replace(text, " ").Trim();
         
+        text = HtmlCommentRegex().Replace(text, "").Trim();
+        text = NoWikiContentsRegex().Replace(text, match => match.Groups[1].Value);
+        
         return text;
+    }
+
+    public static string BasicCleanWikitext(string wikitext)
+    {
+        wikitext = wikitext.Replace("\\n", "\n");
+        wikitext = HtmlCommentRegex().Replace(wikitext, "").Trim();
+        wikitext = NoWikiContentsRegex().Replace(wikitext, match => match.Groups[1].Value);
+        
+        return wikitext;
     }
     
     /// <summary>
@@ -264,7 +355,7 @@ public static partial class ParserUtils
     /// Example: * [[File:Minecraft_sprite_entity_spider.png|15px|link=Dasher Spider]] [[Spider]]\n
     /// Output: { Link = "Dasher Spider", Name = "Spider" }
     /// </summary>
-    [GeneratedRegex(@"^\*\s*(?:\[\[File:[^\]]+\|(?:15px\|)?link=([^\]]+)\]\]\s*)?(?:\[\[(?:[^|\]]+\|)?([^\]]+)\]\])", RegexOptions.Multiline)]
+    [GeneratedRegex(@"^\*\s*(?:\[\[File:[^\]]+\|(?:15px\|)?link=([^\]]+?)(?:\|.*?\]\]|\]\])\s*)?(?:\[\[(?:[^|\]]+\|)?([^\]]+)\]\])", RegexOptions.Multiline)]
     private static partial Regex WikiLinkItemRegex();
     
     /// <summary>

@@ -13,7 +13,7 @@ public partial class RecipeTemplateParser : ITemplateParser<RecipeTemplateDto>
     [GeneratedRegex(@"\{\{Recipe/doc\|(?<id>[A-Z0-9_]+)\}\}", RegexOptions.Compiled)]
     private static partial Regex RecipeOutputInternalIdRegex();
     
-    public RecipeTemplateDto Parse(string wikitext)
+    public RecipeTemplateDto Parse(string wikitext, string backupId = "")
     {
         var templateDto = new RecipeTemplateDto();
         

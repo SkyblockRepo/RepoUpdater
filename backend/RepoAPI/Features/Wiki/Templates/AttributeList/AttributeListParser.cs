@@ -12,7 +12,7 @@ public partial class AttributeListParser : ITemplateParser<AttributeListTemplate
 	[GeneratedRegex(@"([\+\d\.%\w]+)\s*➔\s*([\d\.%\w]+)\s*(.*?)(?=\s*[\+\d]+\s*➔|$)", RegexOptions.Singleline | RegexOptions.Compiled)]
 	private static partial Regex BonusRegex();
 
-	public AttributeListTemplateDto Parse(string wikitext)
+	public AttributeListTemplateDto Parse(string wikitext, string backupId = "")
 	{
 		var attributes = new List<AttributeTemplateDto>();
 		var rows = wikitext.Split(["{{!}}-"], StringSplitOptions.RemoveEmptyEntries)

@@ -17,6 +17,17 @@ public class JsonStringEnumAttribute : JsonConverterAttribute
 }
 
 /// <summary>
+/// When applied to an enum, serializes its values as camelCase strings.
+/// </summary>
+public class JsonStringEnumCapitalizeAttribute : JsonConverterAttribute
+{
+    public override JsonConverter CreateConverter(Type typeToConvert)
+    {
+        return new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper);
+    }
+}
+
+/// <summary>
 /// This processor finds enums with the [JsonStringEnum] attribute
 /// and updates the swagger schema to represent them as camelCase strings.
 /// </summary>
@@ -36,11 +47,15 @@ public class EnumAttributeSchemaProcessor : ISchemaProcessor
         schema.Format = null; // Clear any integer formats
         schema.Enumeration.Clear();
         schema.EnumerationNames.Clear(); // Clear out the default integer values
+        
+        var namingPolicy = type.IsDefined(typeof(JsonStringEnumCapitalizeAttribute), false)
+            ? JsonNamingPolicy.SnakeCaseUpper
+            : JsonNamingPolicy.KebabCaseLower;
 
         // Add the string values
         foreach (var name in Enum.GetNames(type))
         {
-            schema.Enumeration.Add(JsonNamingPolicy.KebabCaseLower.ConvertName(name));
+            schema.Enumeration.Add(namingPolicy.ConvertName(name));
         }
     }
 }

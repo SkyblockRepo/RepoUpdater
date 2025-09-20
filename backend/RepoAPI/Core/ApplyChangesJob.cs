@@ -13,6 +13,7 @@ public class ApplyChangesJob(IServiceProvider serviceProvider, ILogger<ApplyChan
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
         logger.LogInformation("ApplyChangesJob is starting.");
 
         while (!stoppingToken.IsCancellationRequested)

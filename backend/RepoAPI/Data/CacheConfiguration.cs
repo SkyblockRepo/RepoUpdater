@@ -17,6 +17,10 @@ public static class CacheConfiguration
 			};
 		});
 		
+		builder.Services.AddOutputCache(options => {
+			options.DefaultExpirationTimeSpan = TimeSpan.FromSeconds(10);
+		});
+		
 		if (builder.Environment.IsTesting())
 		{
 			return builder;
@@ -27,10 +31,6 @@ public static class CacheConfiguration
 		try {
 			var multiplexer = ConnectionMultiplexer.Connect(redisConnection);
 			builder.Services.AddSingleton<IConnectionMultiplexer>(multiplexer);
-		
-			builder.Services.AddOutputCache(options => {
-				options.DefaultExpirationTimeSpan = TimeSpan.FromSeconds(10);
-			});
 		
 			builder.Services.AddStackExchangeRedisOutputCache(options => {
 				options.Configuration = redisConnection;

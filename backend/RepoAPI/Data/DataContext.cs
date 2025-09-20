@@ -6,37 +6,13 @@ using RepoAPI.Features.Enchantments.Models;
 using RepoAPI.Features.NPCs.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Recipes.Models;
+using RepoAPI.Features.Shops.Models;
 using RepoAPI.Features.Zones.Models;
-using RepoAPI.Util;
 
 namespace RepoAPI.Data;
 
-public class DataContext(DbContextOptions<DataContext> options, IConfiguration config, IWebHostEnvironment environment): DbContext(options)
+public class DataContext(DbContextOptions<DataContext> options): DbContext(options)
 {
-	private static NpgsqlDataSource? Source { get; set; }
-    
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        base.OnConfiguring(optionsBuilder);
-        var connection = config.GetConnectionString("Postgres");
-
-        if (string.IsNullOrEmpty(connection)) {
-            throw new InvalidOperationException("No database connection string found.");
-        }
-        
-        if (Source is null) {
-            var builder = new NpgsqlDataSourceBuilder(connection);
-            builder.EnableDynamicJson();
-            Source = builder.Build();
-        }
-        
-        if (environment.IsTesting()) return;
-        
-        optionsBuilder.UseNpgsql(Source, opt => {
-            opt.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-        });
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
         base.OnModelCreating(modelBuilder);
         
@@ -52,6 +28,7 @@ public class DataContext(DbContextOptions<DataContext> options, IConfiguration c
     public DbSet<SkyblockEnchantment> SkyblockEnchantments => Set<SkyblockEnchantment>();
     public DbSet<SkyblockNpc> SkyblockNpcs => Set<SkyblockNpc>();
     public DbSet<SkyblockZone> SkyblockZones => Set<SkyblockZone>();
+    public DbSet<SkyblockShop> SkyblockShops => Set<SkyblockShop>();
     
     public DbSet<PendingEntityChange> PendingEntityChanges => Set<PendingEntityChange>();
     public DbSet<PendingDeprecation> PendingDeprecations => Set<PendingDeprecation>();

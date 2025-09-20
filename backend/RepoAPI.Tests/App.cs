@@ -2,9 +2,14 @@ using System.Data.Common;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using RepoAPI.Data;
+using RepoAPI.Features.Wiki.Services;
 
 namespace RepoAPI.Tests;
 
@@ -28,24 +33,20 @@ public class App : AppFixture<Program>
 
 	protected override void ConfigureServices(IServiceCollection s)
 	{
-		var dbContextDescriptor = s.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<DataContext>));
-		if (dbContextDescriptor != null)
-		{
-			s.Remove(dbContextDescriptor);
-		}
+		s.RemoveAll<IHostedService>();
 
-		// Create an open SQLite connection
-		_connection = new SqliteConnection("DataSource=:memory:");
-		_connection.Open();
-
-		// Add the DbContext with the SQLite provider
-		s.AddDbContext<DataContext>(options =>
-		{
-			options.UseSqlite(_connection);
-		});
-		
+		s.AddOutputCache();
 		s.AddMemoryCache();
 		s.AddDistributedMemoryCache();
-		s.AddOutputCache();
 	}
+}
+
+class FakeWebHostEnvironment : IWebHostEnvironment
+{
+	public string EnvironmentName { get; set; } = "Testing";
+	public string ApplicationName { get; set; } = "Tests";
+	public string WebRootPath { get; set; } = string.Empty;
+	public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
+	public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
+	public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
 }

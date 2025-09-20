@@ -6,7 +6,7 @@ namespace RepoAPI.Features.Zones.NpcTemplate;
 [RegisterService<ITemplateParser<ZoneTemplateDto>>(LifeTime.Singleton)]
 public partial class ZoneTemplateParser : ITemplateParser<ZoneTemplateDto>
 {
-    public ZoneTemplateDto Parse(string wikitext)
+    public ZoneTemplateDto Parse(string wikitext, string backupId = "")
     {
         var dto = new ZoneTemplateDto();
         

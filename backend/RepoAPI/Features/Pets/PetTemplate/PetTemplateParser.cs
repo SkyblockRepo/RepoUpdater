@@ -12,7 +12,7 @@ public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
     [GeneratedRegex(@"\{\{Pet/doc\|(?<id>[A-Z0-9_]+)\}\}", RegexOptions.Compiled)]
     private static partial Regex PetInternalId();
 
-    public PetTemplateDto Parse(string wikitext)
+    public PetTemplateDto Parse(string wikitext, string backupId = "")
     {
         var dto = new PetTemplateDto();
         

@@ -6,6 +6,7 @@ using RepoAPI.Util;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.HttpOverrides;
 using Quartz;
+using SkyblockRepo;
 using IPNetwork = Microsoft.AspNetCore.HttpOverrides.IPNetwork;
 
 var builder = WebApplication.CreateBuilder();
@@ -17,7 +18,7 @@ services.AddFastEndpoints(o =>
 });
 services.AddSwaggerDocumentation();
 
-services.AddDatabaseConfiguration();
+builder.AddDatabaseConfiguration();
 services.RegisterServicesFromRepoAPI();
 services.AddGitHubClient();
 services.AddSelfConfiguringServices(builder.Configuration);
@@ -61,6 +62,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(opt => {
 
 builder.AddCacheConfiguration();
 
+services.AddSkyblockRepo(opt =>
+{
+	opt.LocalRepoPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output");
+});
+
 var app = builder.Build();
 
 app.UseResponseCaching();
@@ -85,7 +91,7 @@ app.UseOpenApiConfiguration();
 app.UseOutputCache();
 
 if (!app.Environment.IsTesting()) {
-	await app.MigrateDatabase();
+	await app.InitializeDatabaseAsync();
 }
 
 app.Run();

@@ -5,6 +5,7 @@ using RepoAPI.Features.Enchantments.Services;
 using RepoAPI.Features.NPCs.Services;
 using RepoAPI.Features.Pets.Services;
 using RepoAPI.Features.Recipes.Services;
+using RepoAPI.Features.Shops.Services;
 using RepoAPI.Features.Zones.Services;
 
 namespace RepoAPI.Features.Wiki.Services;
@@ -18,6 +19,7 @@ public class WikiDataInitService(
 	PetsIngestionService petsIngestionService,
 	NpcIngestionService npcIngestionService,
 	ZoneIngestionService zoneIngestionService,
+	ShopIngestionService shopIngestionService,
 	HybridCache hybridCache)
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
@@ -92,6 +94,36 @@ public class WikiDataInitService(
 				LocalCacheExpiration = TimeSpan.FromMinutes(10)
 			}, 
 			cancellationToken: ct);
+		
+		await hybridCache.GetOrCreateAsync(
+			"zones-exist",
+			async c => {
+				try {
+					await zoneIngestionService.FetchAndLoadDataAsync(c);
+					return true;
+				} catch {
+					return false;
+				}
+			}, new HybridCacheEntryOptions() {
+				Expiration = TimeSpan.FromMinutes(10),
+				LocalCacheExpiration = TimeSpan.FromMinutes(10)
+			}, 
+			cancellationToken: ct);
+		
+		await hybridCache.GetOrCreateAsync(
+			"shops-exist",
+			async c => {
+				try {
+					await shopIngestionService.FetchAndLoadDataAsync(c);
+					return true;
+				} catch {
+					return false;
+				}
+			}, new HybridCacheEntryOptions() {
+				Expiration = TimeSpan.FromMinutes(10),
+				LocalCacheExpiration = TimeSpan.FromMinutes(10)
+			}, 
+			cancellationToken: ct);
 	}
 	
 	public async Task InitializeWikiDataAsync(CancellationToken ct)
@@ -121,6 +153,11 @@ public class WikiDataInitService(
 		var zonesExist = await context.SkyblockZones.AnyAsync(ct);
 		if (!zonesExist) {
 			await zoneIngestionService.FetchAndLoadDataAsync(ct);
+		}
+		
+		var shopsExist = await context.SkyblockShops.AnyAsync(ct);
+		if (shopsExist) {
+			await shopIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		// await InitializeAttributeShards(ct);
 	}

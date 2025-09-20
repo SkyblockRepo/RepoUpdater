@@ -9,6 +9,7 @@ namespace RepoAPI.Features.Items.Services;
 public interface IItemService
 {
 	ValueTask<SkyblockItemDto?> GetItemByIdAsync(string id, CancellationToken ct);
+	Task<string> GetItemIdByNameAsync(string name, CancellationToken ct);
 	Task<List<SkyblockItemDto>> GetAllItemsAsync(CancellationToken ct, string? source = null);
 	Task<Dictionary<string, SkyblockItem>> GetItemsDictionaryAsync(CancellationToken ct, string? source = null);
 }
@@ -67,5 +68,28 @@ public class ItemService(DataContext context, HybridCache cache, IWebHostEnviron
 		}
 
 		return items;
+	}
+	
+	public async Task<string> GetItemIdByNameAsync(string name, CancellationToken ct)
+	{
+		return await cache.GetOrCreateAsync(
+			$"item-name-to-id-{name}",
+			async c => await GetItemIdByNameInternalAsync(name, c),
+			options: new HybridCacheEntryOptions
+			{
+				Expiration = TimeSpan.FromMinutes(environment.IsDevelopment() ? 1 : 10),
+				LocalCacheExpiration = TimeSpan.FromMinutes(environment.IsDevelopment() ? 1 : 5)
+			}, 
+			cancellationToken: ct);
+	}
+	
+	private async Task<string> GetItemIdByNameInternalAsync(string name, CancellationToken ct)
+	{
+		var item = await context.SkyblockItems
+			.AsNoTracking()
+			.Where(x => EF.Functions.Collate(x.Name, "case_insensitive") == name || name.ToUpperInvariant() == x.InternalId)
+			.FirstOrDefaultAsync(ct);
+		
+		return item?.InternalId ?? string.Empty;
 	}
 }

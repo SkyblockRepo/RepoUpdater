@@ -29,10 +29,10 @@ public class GitSyncService(
     
     private async Task ApplyOverridesAsync(CancellationToken token)
     {
-        foreach (var file in Directory.EnumerateFiles(_overridesBasePath, "*.json", SearchOption.AllDirectories))
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(_overridesBasePath, "data"), "*.json", SearchOption.AllDirectories))
         {
-            var relative = Path.GetRelativePath(_overridesBasePath, file);
-            var dest = Path.Combine(_outputBasePath, relative);
+            var relative = Path.GetRelativePath(Path.Combine(_overridesBasePath, "data"), file);
+            var dest = Path.Combine(Path.Combine(_overridesBasePath, "data"), relative);
 
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
 
@@ -70,7 +70,7 @@ public class GitSyncService(
 
     private void ApplyExclusions()
     {
-        var exclusionsFile = Path.Combine(_overridesBasePath, "exclusions.txt");
+        var exclusionsFile = Path.Combine(_overridesBasePath, "data", "exclusions.txt");
         if (!File.Exists(exclusionsFile)) return;
 
         foreach (var line in File.ReadAllLines(exclusionsFile))
@@ -105,7 +105,7 @@ public class GitSyncService(
         
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (!jsonWriteQueue.IsEmpty) {
+            if (!jsonWriteQueue.IsEmpty || JsonWriteQueue.LastWriteQueuedAt > DateTimeOffset.UtcNow.AddMinutes(-1)) {
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
                 continue; // Wait until the write queue is empty before proceeding
             }

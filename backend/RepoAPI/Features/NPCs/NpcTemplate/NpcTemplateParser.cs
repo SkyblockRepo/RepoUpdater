@@ -10,7 +10,7 @@ namespace RepoAPI.Features.NPCs.NpcTemplate;
 [RegisterService<ITemplateParser<NpcTemplateDto>>(LifeTime.Singleton)]
 public partial class NpcTemplateParser : ITemplateParser<NpcTemplateDto>
 {
-    public NpcTemplateDto Parse(string wikitext)
+    public NpcTemplateDto Parse(string wikitext, string backupId = "")
     {
         var dto = new NpcTemplateDto();
         

@@ -5,6 +5,12 @@ namespace RepoAPI.Util;
 
 public static class NetworkExtensions
 {
+    public static bool IsFromPrivateNetwork(this HttpContext context)
+    {
+        var ip = context.Connection.RemoteIpAddress;
+        return ip is not null && ip.IsPrivate();
+    }
+    
     /// <summary>
     /// Determines if an IP address is within one of the RFC 1918 private ranges.
     /// </summary>

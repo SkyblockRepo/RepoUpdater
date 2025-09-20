@@ -6,7 +6,7 @@ namespace RepoAPI.Features.Items.ItemTemplate;
 [RegisterService<ITemplateParser<ItemTemplateDto>>(LifeTime.Singleton)]
 public partial class ItemTemplateParser : ITemplateParser<ItemTemplateDto>
 {
-    public ItemTemplateDto Parse(string wikitext)
+    public ItemTemplateDto Parse(string wikitext, string backupId = "")
     {
         wikitext = ParserUtils.ExtractIncludeOnlyContent(wikitext);
         

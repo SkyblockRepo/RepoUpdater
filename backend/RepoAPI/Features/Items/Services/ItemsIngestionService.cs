@@ -52,10 +52,7 @@ public class ItemsIngestionService(
             
             if (existingItems.TryGetValue(apiItem.Id, out var existingItem)) {
                 // Check if the item data has changed
-                if (existingItem.Data is null || ParserUtils.DeepJsonEquals(apiItem, existingItem.Data))
-                {
-                    // TEMPORARY TO WRITE INITIAL FILES
-                    await WriteChangesToFile(existingItem);
+                if (existingItem.Data is null || ParserUtils.DeepJsonEquals(apiItem, existingItem.Data)) {
                     continue;
                 }
                 

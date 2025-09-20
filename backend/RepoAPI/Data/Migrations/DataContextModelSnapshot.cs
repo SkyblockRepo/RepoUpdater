@@ -413,6 +413,50 @@ namespace RepoAPI.Data.Migrations
                     b.ToTable("SkyblockRecipes");
                 });
 
+            modelBuilder.Entity("RepoAPI.Features.Shops.Models.SkyblockShop", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("IngestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InternalId")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<bool>("Latest")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("RawTemplate")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IngestedAt");
+
+                    b.HasIndex("InternalId");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("InternalId", "Latest");
+
+                    b.ToTable("SkyblockShops");
+                });
+
             modelBuilder.Entity("RepoAPI.Features.Zones.Models.SkyblockZone", b =>
                 {
                     b.Property<int>("Id")

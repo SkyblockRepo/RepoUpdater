@@ -46,7 +46,7 @@ public class JsonFileWriterService(
 					continue;
 				}
 				
-				var overrideFilePath = Path.Combine(_overridesBasePath, directory, safeFileName);
+				var overrideFilePath = Path.Combine(_overridesBasePath, "data", directory, safeFileName);
 
 				Directory.CreateDirectory(Path.Combine(_outputBasePath, directory)!);
                 
@@ -156,7 +156,7 @@ public class JsonFileWriterService(
 	
 	public void LoadExclusions()
 	{
-		var exclusionsFile = Path.Combine(_overridesBasePath, "exclusions.txt");
+		var exclusionsFile = Path.Combine(_overridesBasePath, "data", "exclusions.txt");
 		if (!File.Exists(exclusionsFile)) return;
 
 		foreach (var line in File.ReadAllLines(exclusionsFile))
