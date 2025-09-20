@@ -105,7 +105,7 @@ public class GitSyncService(
         
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (!jsonWriteQueue.IsEmpty || JsonWriteQueue.LastWriteQueuedAt > DateTimeOffset.UtcNow.AddMinutes(-1)) {
+            if (JsonWriteQueue.WasRecentlyQueued()) {
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
                 continue; // Wait until the write queue is empty before proceeding
             }
