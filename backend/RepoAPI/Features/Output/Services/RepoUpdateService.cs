@@ -12,7 +12,7 @@ public class RepoUpdateService(ISkyblockRepoClient repoClient) : BackgroundServi
 		while (!stoppingToken.IsCancellationRequested)
 		{
 			await Task.Delay(_interval, stoppingToken);
-			await repoClient.CheckForUpdatesAsync(stoppingToken);
+			await repoClient.ReloadRepoAsync(stoppingToken);
 		}
 	}
 
