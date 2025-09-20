@@ -116,6 +116,7 @@ public class GitSyncService(
             var gitHubClient = scopedServiceProvider.GetRequiredService<IGitHubClient>();
 
             try {
+                logger.LogInformation("Git Sync Service cycle started.");
                 await ApplyOverridesAsync(stoppingToken);
                 ApplyExclusions();
                 CopyManifest();

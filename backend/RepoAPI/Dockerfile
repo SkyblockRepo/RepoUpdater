@@ -1,6 +1,6 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS base
 RUN apk add git
-RUN apk add --no-cache nodejs npm
+RUN apk add --no-cache nodejs-current npm
 USER $APP_UID
 WORKDIR /app
 EXPOSE 80
