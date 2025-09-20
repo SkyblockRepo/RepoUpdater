@@ -1,8 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using RepoAPI.Core;
-using RepoAPI.Features.Output.Services;
 using RepoAPI.Util;
 using SkyblockRepo;
 
@@ -43,12 +41,12 @@ public static class DatabaseConfiguration
 	public static async Task InitializeDatabaseAsync(this WebApplication app)
 	{
 		if (app.Environment.IsTesting()) return;
-		
+
 		using var scope = app.Services.CreateScope();
 		var logging = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 		logging.LogInformation("Starting RepoAPI...");
 		
-		var repo = scope.ServiceProvider.GetRequiredService<ISkyblockRepo>();
+		var repo = scope.ServiceProvider.GetRequiredService<ISkyblockRepoClient>();
 		await repo.InitializeAsync();
 
 		var db = scope.ServiceProvider.GetRequiredService<DataContext>();

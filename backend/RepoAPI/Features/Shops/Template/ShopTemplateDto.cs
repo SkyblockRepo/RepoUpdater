@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using RepoAPI.Core.Models;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Shops.Template;
 
@@ -30,4 +31,7 @@ public class InventorySlot
 	
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public List<UpgradeCost>? Cost { get; set; }
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public List<UpgradeCost>? Output { get; set; }
 }

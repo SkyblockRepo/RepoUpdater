@@ -10,21 +10,21 @@ public class SkyblockRepoConfiguration
 		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SkyblockRepo");
 	
 	/// <summary>
-	/// Polling interval for checking for updates to the repo data. Defaults to 1 hour.
-	/// </summary>
-	public TimeSpan PollingInterval { get; set; } = TimeSpan.FromHours(1);
-	
-	/// <summary>
-	/// Whether to enable automatic polling for updates. If false, updates must be triggered manually. Defaults to true.
-	/// </summary>
-	public bool EnableAutoPolling { get; set; } = true;
-	
-	/// <summary>
 	/// GitHub repository URL for SkyblockRepo. Defaults to https://skyblockrepo.com/repo
 	/// Can be changed to use a fork or a different repository.
 	/// Note: The repository must follow the same structure as the original SkyblockRepo repository.
 	/// </summary>
 	public string SkyblockRepoUrl { get; set; } = "https://skyblockrepo.com/repo";
+	
+	/// <summary>
+	/// Path to the zip file of the main branch of the SkyblockRepo repository. Defaults to /archive/refs/heads/main.zip
+	/// </summary>
+	public string SkyblockRepoZipPath { get; set; } = "/archive/refs/heads/main.zip";
+	
+	/// <summary>
+	/// The endpoint to poll for updates with ETag support. Defaults to https://api.github.com/repos/SkyblockRepo/Repo/branches/main
+	/// </summary>
+	public string SkyblockRepoApiEndpoint { get; set; } = "https://api.github.com/repos/SkyblockRepo/Repo/branches/main";
 
 	/// <summary>
 	/// Set this to a local path to use a local clone of the repo instead of cloning from GitHub.

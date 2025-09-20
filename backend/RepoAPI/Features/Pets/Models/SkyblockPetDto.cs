@@ -1,8 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using RepoAPI.Core.Models;
-using RepoAPI.Features.Pets.PetTemplate;
 using Riok.Mapperly.Abstractions;
+using SkyblockRepo.Models;
+using PetFlags = RepoAPI.Features.Pets.PetTemplate.PetFlags;
 
 namespace RepoAPI.Features.Pets.Models;
 

@@ -1,0 +1,28 @@
+name: Publish SkyblockRepo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: nuget
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        working-directory: backend
+        run: dotnet restore SkyblockRepo
+
+      - name: Build
+        working-directory: backend
+        run: dotnet build --no-restore SkyblockRepo -c Release
+
+      - name: Publish
+        working-directory: backend
+        run: dotnet nuget push SkyblockRepo/bin/Release/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json

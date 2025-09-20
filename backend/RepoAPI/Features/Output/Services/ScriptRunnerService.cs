@@ -4,13 +4,10 @@ using RepoAPI.Util;
 
 namespace RepoAPI.Features.Output.Services;
 
-[RegisterService<ScriptRunnerService>(LifeTime.Scoped)]
+[RegisterService<ScriptRunnerService>(LifeTime.Singleton)]
 public class ScriptRunnerService(
-    ILogger<ScriptRunnerService> logger,
-    IServiceProvider serviceProvider,
-    JsonWriteQueue jsonWriteQueue
+    ILogger<ScriptRunnerService> logger
 ) {
-    private readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
     private readonly string _scriptsBasePath = Path.Combine(GetOutputBasePath(), "..", "overrides");
     
     private async Task RunScriptsAsync(CancellationToken token)
@@ -70,13 +67,17 @@ public class ScriptRunnerService(
             CreateNoWindow = true
         };
 
-        using var process = Process.Start(psi)!;
-        var output = new StringBuilder();
-        output.AppendLine(await process.StandardOutput.ReadToEndAsync());
-        output.AppendLine(await process.StandardError.ReadToEndAsync());
+        try {
+            using var process = Process.Start(psi)!;
+            var output = new StringBuilder();
+            output.AppendLine(await process.StandardOutput.ReadToEndAsync());
+            output.AppendLine(await process.StandardError.ReadToEndAsync());
 
-        await process.WaitForExitAsync();
-        return (process.ExitCode, output.ToString());
+            await process.WaitForExitAsync();
+            return (process.ExitCode, output.ToString());
+        } catch (Exception ex) {
+            return (-1, $"Failed to start Node.js process: {ex.Message}");
+        }
     }
 
     private static string GetOutputBasePath()

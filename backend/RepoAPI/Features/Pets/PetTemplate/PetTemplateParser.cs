@@ -2,6 +2,8 @@ using System.Text.RegularExpressions;
 using RepoAPI.Core.Models;
 using RepoAPI.Features.Pets.Models;
 using RepoAPI.Features.Wiki.Templates;
+using SkyblockRepo;
+using SkyblockRepo.Models;
 using TimeSpanParserUtil;
 
 namespace RepoAPI.Features.Pets.PetTemplate;
@@ -179,7 +181,7 @@ public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
                     var itemStr = itemMatch.Groups["item"].Value;
                     if (!int.TryParse(qtyStr, out var qty)) continue;
                     
-                    var itemId = itemStr.Replace(" ", "_").ToUpperInvariant();
+                    var itemId = SkyblockRepoClient.Instance.FindItem(itemStr)?.InternalId ?? itemStr;
                     
                     petRarity.KatUpgradeCosts ??= [];
                     petRarity.KatUpgradeCosts.Add(UpgradeCost.ItemCost(itemId, qty));

@@ -30,6 +30,8 @@ public class GitSyncService(
     
     private async Task ApplyOverridesAsync(CancellationToken token)
     {
+        await PullOverridesAsync();
+        
         foreach (var file in Directory.EnumerateFiles(Path.Combine(_overridesBasePath, "data"), "*.json", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(Path.Combine(_overridesBasePath, "data"), file);
@@ -89,7 +91,7 @@ public class GitSyncService(
 
     private void CopyManifest()
     {
-        var source = Path.Combine(_overridesBasePath, "manifest.json");
+        var source = Path.Combine(_overridesBasePath, "data", "manifest.json");
         var dest = Path.Combine(_outputBasePath, "manifest.json");
 
         if (File.Exists(source))
@@ -206,6 +208,26 @@ public class GitSyncService(
         {
             logger.LogError("Failed to push changes. ExitCode={Code}\nOutput:\n{Output}", 
                 pushExitCode, pushOutput);
+        }
+    }
+    
+    private async Task PullOverridesAsync()
+    {
+        if (!Directory.Exists(_overridesBasePath))
+        {
+            logger.LogWarning("Overrides directory does not exist at path: {Path}", _overridesBasePath);
+            return;
+        }
+
+        var (pullExitCode, pullOutput) = await RunGitAsync("pull origin main", _overridesBasePath);
+        if (pullExitCode != 0)
+        {
+            logger.LogError("Failed to pull overrides. ExitCode={Code}\nOutput:\n{Output}", 
+                pullExitCode, pullOutput);
+        }
+        else
+        {
+            logger.LogInformation("Successfully pulled latest overrides.");
         }
     }
 

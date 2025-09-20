@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Humanizer;
+using SkyblockRepo;
 
 namespace RepoAPI.Features.Wiki.Templates;
 
@@ -346,9 +347,28 @@ public static partial class ParserUtils
         
         return text;
     }
+    
+    public static string FillInItemLoreTemplates(string wikitext)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext)) return wikitext;
+        
+        var match = ItemLoreTemplateNameRegex().Match(wikitext);
+        while (match.Success)
+        {
+            var itemName = match.Groups[1].Value.Trim();
+            var item = SkyblockRepoClient.Instance.FindItem(itemName);
+            if (item is null) break;
+            wikitext = wikitext.Replace(match.Value, item.NameAndLore);
+            match = ItemLoreTemplateNameRegex().Match(wikitext);
+        }
+        return wikitext;
+    }
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex SpaceRegex();
+        
+    [GeneratedRegex(@"\{\{Item[_\/](.*?)(?:\|lore)?\}\}", RegexOptions.IgnoreCase | RegexOptions.Singleline, "en-US")]
+    private static partial Regex ItemLoreTemplateNameRegex();
     
     /// <summary>
     /// Gets a list item from a bulleted line

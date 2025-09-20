@@ -75,6 +75,12 @@ public class UpgradeCost
 		MedalType = medalType,
 		Amount = amount
 	};
+	
+	public static UpgradeCost PeltCost(int amount) => new()
+	{
+		Type = UpgradeCostType.Pelts,
+		Amount = amount
+	};
 }
 
 [JsonStringEnumCapitalize]
@@ -88,5 +94,6 @@ public enum UpgradeCostType
 	Copper = 5,
 	Gems = 6,
 	Bits = 7,
-	JacobMedal = 8
+	JacobMedal = 8,
+	Pelts = 9
 }

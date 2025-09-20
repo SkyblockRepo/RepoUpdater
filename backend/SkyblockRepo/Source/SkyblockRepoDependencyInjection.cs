@@ -6,9 +6,12 @@ namespace SkyblockRepo;
 
 public static class SkyblockRepoDependencyInjection
 {
-	public static IServiceCollection AddSkyblockRepo(this IServiceCollection services, SkyblockRepoConfiguration options) {
+	public static IServiceCollection AddSkyblockRepo(this IServiceCollection services, SkyblockRepoConfiguration? options = null) {
+		options ??= new SkyblockRepoConfiguration();
 		services.AddSingleton(options);
-		return services.AddSingleton<ISkyblockRepo, SkyblockRepo>();
+		services.AddSingleton<ISkyblockRepoUpdater, SkyblockRepoUpdater>();
+		services.AddSingleton<ISkyblockRepoClient, SkyblockRepoClient>();
+		return services;
 	}
 
 	public static IServiceCollection AddSkyblockRepo(this IServiceCollection services,

@@ -1,10 +1,10 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using Humanizer;
 using RepoAPI.Core.Models;
+using SkyblockRepo;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Wiki.Templates;
+
 
 public static partial class ParserUtils
 {
@@ -13,19 +13,21 @@ public static partial class ParserUtils
 	/// {{Item/SAND:1|lore}}\n\n&7Cost\n&620 Coins
 	/// [ { "type": UpgradeCostType.Coins, "amount": 20 } ]
 	/// </summary>
-	/// <param name="wikitext"></param>
+	/// <param name="parsedLore"></param>
+	/// <param name="outputCount"></param>
 	/// <returns></returns>
-	public static List<UpgradeCost> ParseUpgradeCost(string wikitext)
+	public static ShopInputOutput ParseUpgradeCost(string parsedLore, int outputCount = 1)
 	{
-		var costs = new List<UpgradeCost>();
-		if (string.IsNullOrWhiteSpace(wikitext)) return costs;
+		var result = new ShopInputOutput();
+		var costs = result.Cost;
+		if (string.IsNullOrWhiteSpace(parsedLore)) return result;
 
 		// Remove any item links or other templates
-		wikitext = BasicCleanWikitext(wikitext);
+		parsedLore = BasicCleanWikitext(parsedLore);
 		
 		// Find the "Cost" section
-		var costSectionMatch = CostsSectionRegex().Match(wikitext);
-		if (!costSectionMatch.Success) return costs;
+		var costSectionMatch = CostsSectionRegex().Match(parsedLore);
+		if (!costSectionMatch.Success) return result;
 		
 		var costSection = costSectionMatch.Groups[1].Value;
 		// Split the section into lines and parse each line
@@ -76,13 +78,24 @@ public static partial class ParserUtils
 						costs.Add(UpgradeCost.MoteCost(motesCount * quantity));
 					}
 				} else {
-					var item = SkyblockRepo.SkyblockRepo.Cache.FindItem(itemName);
+					var item = SkyblockRepoClient.Instance.FindItem(itemName);
 					costs.Add(UpgradeCost.ItemCost(item?.InternalId ?? itemName, quantity));
 				}
 			}
 		}
 		
-		return costs;
+		
+		// Check for what item is being sold, if any
+		var linesBeforeCost = parsedLore.Substring(0, costSectionMatch.Index);
+		var itemMatch = ItemTemplateNameRegex().Match(linesBeforeCost);
+		if (itemMatch.Success)
+		{
+			var itemName = itemMatch.Groups[1].Value;
+			var item = SkyblockRepoClient.Instance.FindItem(itemName);
+			result.Output.Add(UpgradeCost.ItemCost(item?.InternalId ?? itemName, outputCount));
+		}
+		
+		return result;
 	}
 	
 	/// <summary>
@@ -93,6 +106,9 @@ public static partial class ParserUtils
 	
     [GeneratedRegex(@"Cost\n\s*([\S\s]*?)(?=\n\n|$)", RegexOptions.IgnoreCase | RegexOptions.Singleline, "en-US")]
     private static partial Regex CostsSectionRegex();
+    
+    [GeneratedRegex(@"\{\{Item[_/](.*?)[\|\}]", RegexOptions.IgnoreCase | RegexOptions.Singleline, "en-US")]
+    private static partial Regex ItemTemplateNameRegex();
     
     /// <summary>
     /// Regex to get quantity from a string like "Item Name x32" or "Item Name 32"

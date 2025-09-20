@@ -62,10 +62,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(opt => {
 
 builder.AddCacheConfiguration();
 
-services.AddSkyblockRepo(opt =>
-{
-	opt.LocalRepoPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output");
-});
+services.AddSkyblockRepo();
 
 var app = builder.Build();
 

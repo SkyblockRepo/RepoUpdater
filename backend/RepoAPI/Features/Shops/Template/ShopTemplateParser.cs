@@ -41,14 +41,15 @@ public partial class ShopTemplateParser : ITemplateParser<ShopTemplateDto>
             if (!SlotPropertyRegex().IsMatch(key)) continue;
             
             var parsed = ParserUtils.ParseLoreString(value.ToString() ?? "");
-            var cost = ParserUtils.ParseUpgradeCost(parsed.CleanLore ?? "");
+            var cost = ParserUtils.ParseUpgradeCost(parsed.CleanLore ?? "", parsed.Count);
             
             dto.Slots[key] = new InventorySlot()
             {
-                Lore = parsed.CleanLore,
+                Lore = ParserUtils.FillInItemLoreTemplates(parsed.CleanLore ?? ""),
                 Name = parsed.ItemName,
                 Material = parsed.Material,
-                Cost = cost.Count > 0 ? cost : null
+                Cost = cost.Cost.Count > 0 ? cost.Cost : null,
+                Output = cost.Output.Count > 0 ? cost.Output : null
             };
         }
 

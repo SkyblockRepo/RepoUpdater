@@ -9,15 +9,17 @@ public class SkyblockRepoInitializeTests
 	[Fact]
 	public async Task InitializeFromLocalFolder()
 	{
-		var logger = Substitute.For<ILogger<SkyblockRepo>>();
-		var repo = new SkyblockRepo(new SkyblockRepoConfiguration
+		var logger = Substitute.For<ILogger<SkyblockRepoUpdater>>();
+		var config = new SkyblockRepoConfiguration
 		{
 			LocalRepoPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output")
-		}, logger);
+		};
+		var updater = new SkyblockRepoUpdater(config, logger);
+		var repo = new SkyblockRepoClient(updater);
 		
 		await repo.InitializeAsync();
-		
-		SkyblockRepo.Cache.Items.Count.ShouldBeGreaterThan(5000);
-		SkyblockRepo.Cache.Pets.Count.ShouldBe(79);
+
+		SkyblockRepoClient.Data.Items.Count.ShouldBeGreaterThan(5000);
+		SkyblockRepoClient.Data.Pets.Count.ShouldBe(79);
 	}
 }

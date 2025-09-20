@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Core.Models;
 using RepoAPI.Features.Items.Services;
 using RepoAPI.Features.Wiki.Templates;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Wiki.Services;
 
@@ -17,12 +18,12 @@ public class WikiParser(IItemService itemService) : IWikiParser
 	{
 		var parsedCost = ParserUtils.ParseUpgradeCost(wikitext);
 
-		foreach (var item in parsedCost)
-		{
-			if (item.ItemId is null) continue;
-			item.ItemId = await itemService.GetItemIdByNameAsync(item.ItemId, CancellationToken.None);
-		}
+		// foreach (var item in parsedCost)
+		// {
+		// 	if (item.ItemId is null) continue;
+		// 	item.ItemId = await itemService.GetItemIdByNameAsync(item.ItemId, CancellationToken.None);
+		// }
 		
-		return parsedCost;
+		return parsedCost.Cost;
 	}
 }

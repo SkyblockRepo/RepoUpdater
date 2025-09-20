@@ -13,6 +13,8 @@ public class SkyblockItemData
 	public double NpcValue { get; set; }
 	public string Lore { get; set; } = string.Empty;
 	public ItemFlags Flags { get; set; } = new();
+	
+	public string NameAndLore => $"{Data?.Name ?? Name}\n{Lore}";
     
 	/// <summary>
 	/// Hypixel item data from /resources/skyblock/items
