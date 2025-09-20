@@ -156,7 +156,7 @@ public class WikiDataInitService(
 		}
 		
 		var shopsExist = await context.SkyblockShops.AnyAsync(ct);
-		if (shopsExist) {
+		if (!shopsExist) {
 			await shopIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		// await InitializeAttributeShards(ct);
