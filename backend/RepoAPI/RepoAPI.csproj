@@ -44,6 +44,8 @@
         <PackageReference Include="Refit.HttpClientFactory" Version="8.0.0" />
         <PackageReference Include="Riok.Mapperly" Version="4.2.1" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.8.4" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+        <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
         <PackageReference Include="StackExchange.Redis" Version="2.9.17" />
         <PackageReference Include="TimeSpanParserUtil" Version="1.2.0" />
     </ItemGroup>
