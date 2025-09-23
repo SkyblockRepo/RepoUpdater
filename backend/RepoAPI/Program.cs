@@ -64,7 +64,11 @@ builder.AddCacheConfiguration();
 
 services.AddSkyblockRepo(opt =>
 {
-	opt.LocalRepoPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output");
+	opt.UseNeuRepo = true;
+	opt.SkyblockRepo = new RepoSettings
+	{
+		LocalPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output")
+	};
 });
 
 var app = builder.Build();

@@ -12,9 +12,12 @@ public class SkyblockRepoInitializeTests
 		var logger = Substitute.For<ILogger<SkyblockRepoUpdater>>();
 		var config = new SkyblockRepoConfiguration
 		{
-			LocalRepoPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output")
+			UseNeuRepo = false,
+			SkyblockRepo = {
+				LocalPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output")
+			}
 		};
-		var updater = new SkyblockRepoUpdater(config, logger);
+		var updater = new SkyblockRepoUpdater(config);
 		var repo = new SkyblockRepoClient(updater);
 		
 		await repo.InitializeAsync();

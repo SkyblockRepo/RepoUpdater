@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
-using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SkyblockRepo.Models;
+using SkyblockRepo.Models.Neu;
 
 namespace SkyblockRepo;
 
@@ -13,156 +14,124 @@ public interface ISkyblockRepoUpdater
 	Task ReloadRepoAsync(CancellationToken cancellationToken = default);
 }
 
-public class SkyblockRepoUpdater(SkyblockRepoConfiguration configuration, ILogger<SkyblockRepoUpdater> logger) : ISkyblockRepoUpdater
+public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 {
 	public static SkyblockRepoData Data { get; set; } = new();
 	public static Manifest? Manifest { get => Data.Manifest; set => Data.Manifest = value; }
-
-	private readonly JsonSerializerOptions? _jsonSerializerOptions = new JsonSerializerOptions
-	{
-		PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-	};
 	
-	public bool UsingLocalRepo => configuration.LocalRepoPath is not null;
-	public string RepoPath => configuration.LocalRepoPath ?? Path.Combine(configuration.FileStoragePath, "data-skyblockrepo");
+    private readonly ILogger<SkyblockRepoUpdater> _logger;
+    private readonly IGithubRepoUpdater _skyblockRepoUpdater;
+    private readonly IGithubRepoUpdater? _neuRepoUpdater; // Nullable for when UseNeuRepo is false
+    private readonly JsonSerializerOptions _jsonSerializerOptions = new()
+    {
+	    PropertyNameCaseInsensitive = true,
+	    PropertyNamingPolicy = JsonNamingPolicy.CamelCase, 
+	    Converters = { new NeuDropConverter() }
+    };
+    
+    public SkyblockRepoUpdater(
+        SkyblockRepoConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
+        ILogger<SkyblockRepoUpdater>? logger = null,
+        ILogger<GithubRepoUpdater>? repoUpdaterLogger = null)
+    {
+        _logger = logger ?? NullLogger<SkyblockRepoUpdater>.Instance;
+        _skyblockRepoUpdater = CreateUpdater(configuration.SkyblockRepo, configuration.FileStoragePath, httpClientFactory, repoUpdaterLogger);
+
+        if (configuration.UseNeuRepo)
+        {
+            _neuRepoUpdater = CreateUpdater(configuration.NeuRepo, configuration.FileStoragePath, httpClientFactory, repoUpdaterLogger);
+        }
+    }
 	
-	public async Task InitializeAsync(CancellationToken cancellationToken = default)
-	{
-		if (configuration.LocalRepoPath is not null) {
-			await LoadLocalRepo();
-		} else {
-			await CheckForUpdatesAsync(cancellationToken);
-		}
+    public SkyblockRepoUpdater(
+        SkyblockRepoConfiguration configuration,
+        HttpClient? httpClient = null,
+        ILogger<SkyblockRepoUpdater>? logger = null,
+        ILogger<GithubRepoUpdater>? repoUpdaterLogger = null)
+    {
+        _logger = logger ?? NullLogger<SkyblockRepoUpdater>.Instance;
+        var client = httpClient ?? new HttpClient();
+        _skyblockRepoUpdater = CreateUpdater(configuration.SkyblockRepo, configuration.FileStoragePath, client, repoUpdaterLogger);
 
-		await ReloadRepoAsync(cancellationToken);
-	}
+        if (configuration.UseNeuRepo)
+        {
+            _neuRepoUpdater = CreateUpdater(configuration.NeuRepo, configuration.FileStoragePath, client, repoUpdaterLogger);
+        }
+    }
 
-	public async Task ReloadRepoAsync(CancellationToken cancellationToken = default)
-	{
-		await LoadSkyblockItems(RepoPath);
-		await LoadSkyblockPets(RepoPath);
-	}
+    private static IGithubRepoUpdater CreateUpdater(RepoSettings settings, string storagePath, IHttpClientFactory factory, ILogger<GithubRepoUpdater>? logger)
+    {
+        var options = new GithubRepoOptions(
+            RepoName: settings.Name,
+            FileStoragePath: storagePath,
+            ApiEndpoint: settings.ApiEndpoint,
+            ZipDownloadUrl: settings.Url.TrimEnd('/') + settings.ZipPath,
+            LocalRepoPath: settings.LocalPath
+        );
+        return new GithubRepoUpdater(options, factory, logger);
+    }
+    
+    private static IGithubRepoUpdater CreateUpdater(RepoSettings settings, string storagePath, HttpClient client, ILogger<GithubRepoUpdater>? logger)
+    {
+        var options = new GithubRepoOptions(
+            RepoName: settings.Name,
+            FileStoragePath: storagePath,
+            ApiEndpoint: settings.ApiEndpoint,
+            ZipDownloadUrl: settings.Url.TrimEnd('/') + settings.ZipPath,
+            LocalRepoPath: settings.LocalPath
+        );
+        return new GithubRepoUpdater(options, client, logger);
+    }
+    
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        // On startup, check all repos for updates, then load all data once.
+        await CheckForUpdatesAsync(cancellationToken);
+        await ReloadRepoAsync(cancellationToken);
+    }
 
-	public async Task CheckForUpdatesAsync(CancellationToken cancellationToken = default)
-	{
-		if (UsingLocalRepo || cancellationToken.IsCancellationRequested) return;
+    public async Task CheckForUpdatesAsync(CancellationToken cancellationToken = default)
+    {
+        var updateTasks = new List<Task<bool>> { _skyblockRepoUpdater.CheckForUpdatesAsync(cancellationToken) };
+        if (_neuRepoUpdater is not null)
+        {
+            updateTasks.Add(_neuRepoUpdater.CheckForUpdatesAsync(cancellationToken));
+        }
 
-		logger.LogInformation("Checking for updates...");
+        var results = await Task.WhenAll(updateTasks);
 
-		var existingMeta = await GetLastDownloadMeta();
+        // If any of the repos were updated, trigger a single reload of all data.
+        if (results.Any(wasUpdated => wasUpdated))
+        {
+            _logger.LogInformation("One or more repositories were updated. Reloading all data...");
+            await ReloadRepoAsync(cancellationToken);
+        }
+    }
 
-		var httpClient = new HttpClient();
-		httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SkyblockRepo");
-		if (existingMeta?.ETag is not null) {
-			httpClient.DefaultRequestHeaders.TryAddWithoutValidation("etag", existingMeta.ETag);
-		}
-
-		var response = await httpClient.GetAsync(configuration.SkyblockRepoApiEndpoint, cancellationToken);
-		
-		if (response.StatusCode == System.Net.HttpStatusCode.NotModified ||
-		    (response.Headers.ETag is not null && response.Headers.ETag.ToString() == existingMeta?.ETag))
-		{
-			await SaveDownloadMeta(new DownloadMeta()
-			{
-				LastUpdated = DateTimeOffset.Now,
-				ETag = response.Headers.ETag?.ToString() ?? existingMeta?.ETag,
-				Version = existingMeta?.Version ?? Data.Manifest?.Version ?? 1,
-			});
-			logger.LogInformation("No updates found!");
-			return;
-		}
-		
-		if (!response.IsSuccessStatusCode)
-		{
-			logger.LogError("Failed to fetch last update from {Endpoint}! Status: {StatusCode}",
-				configuration.SkyblockRepoApiEndpoint, response.StatusCode);
-			return;
-		}
-		
-		logger.LogInformation("Updates found! Downloading new repo version...");
-		await DownloadRepoAsync(response.Headers.ETag?.ToString() ?? string.Empty, cancellationToken);
-	}
-	
-	private async Task DownloadRepoAsync(string etag, CancellationToken cancellationToken = default)
-	{
-		var tempPath = Path.Combine(configuration.FileStoragePath, "temp-skyblockrepo");
-		if (Directory.Exists(tempPath))
-		{
-			Directory.Delete(tempPath, true);
-		}
-
-		var downloadPath = configuration.SkyblockRepoZipPath.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-			? configuration.SkyblockRepoZipPath
-			: configuration.SkyblockRepoUrl + configuration.SkyblockRepoZipPath;
-		
-		var httpClient = new HttpClient();
-		httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SkyblockRepo");
-		
-		var response = await httpClient.GetAsync(downloadPath, cancellationToken);
-		if (!response.IsSuccessStatusCode)
-		{
-			logger.LogError("Failed to download repo zip from {DownloadPath}! Status: {StatusCode}",
-				downloadPath, response.StatusCode);
-			return;
-		}
-
-		try
-		{
-			await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-			using var archive = new ZipArchive(stream);
-			archive.ExtractToDirectory(tempPath, true);
-			
-			// The zip contains a root folder named Repo-main or similar, get that folder
-			var rootFolder = Directory.GetDirectories(tempPath).FirstOrDefault();
-			if (rootFolder is null)
-			{
-				logger.LogError("Invalid zip structure! No root folder found.");
-				if (Directory.Exists(tempPath))
-				{
-					Directory.Delete(tempPath, true);
-				}
-				return;
-			}
-			
-			if (Directory.Exists(RepoPath))
-			{
-				Directory.Delete(RepoPath, true);
-			}
-			
-			Directory.Move(rootFolder, RepoPath);
-			Directory.Delete(tempPath, true);
-			
-			await SaveDownloadMeta(new DownloadMeta()
-			{
-				LastUpdated = DateTimeOffset.Now,
-				ETag = etag,
-				Version = (Manifest?.Version ?? 1) + 1,
-			});
-			
-			await LoadManifest(RepoPath);
-		}
-		catch (Exception e)
-		{
-			logger.LogError(e, "Error cloning repo!");
-			if (Directory.Exists(tempPath))
-			{
-				Directory.Delete(tempPath, true);
-			}
-		}
-	}
-
-	private async Task LoadLocalRepo()
-	{
-		if (configuration.LocalRepoPath is null) return;
-		await LoadManifest(configuration.LocalRepoPath);
-	}
+    public async Task ReloadRepoAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Loading data from primary SkyblockRepo...");
+        var mainRepoPath = _skyblockRepoUpdater.RepoPath;
+        await LoadManifest(mainRepoPath);
+        await LoadSkyblockItems(mainRepoPath);
+        await LoadSkyblockPets(mainRepoPath);
+        
+        if (_neuRepoUpdater is not null)
+        {
+            _logger.LogInformation("Loading data from NEU repo...");
+            var neuRepoPath = _neuRepoUpdater.RepoPath;
+            
+            await LoadNeuItems(neuRepoPath);
+        }
+    }
 
 	private async Task LoadManifest(string repoPath)
 	{
 		var manifestPath = Path.Combine(repoPath, "manifest.json");
 		if (!File.Exists(manifestPath))
 		{
-			logger.LogCritical("Invalid {RepoPath}! No manifest.json found!", repoPath);
+			_logger.LogCritical("Invalid {RepoPath}! No manifest.json found!", repoPath);
 			return;
 		}
 
@@ -170,11 +139,11 @@ public class SkyblockRepoUpdater(SkyblockRepoConfiguration configuration, ILogge
 		{
 			await using var stream = File.OpenRead(manifestPath);
 			Manifest = await JsonSerializer.DeserializeAsync<Manifest>(stream, _jsonSerializerOptions);
-			logger.LogInformation("Manifest file loaded successfully!");
+			_logger.LogInformation("Manifest file loaded successfully!");
 		}
 		catch (Exception e)
 		{
-			logger.LogError(e, "Error loading manifest!");
+			_logger.LogError(e, "Error loading manifest!");
 		}
 	}
 
@@ -188,23 +157,51 @@ public class SkyblockRepoUpdater(SkyblockRepoConfiguration configuration, ILogge
 			InternalId = kvp.Value.InternalId,
 			Name = kvp.Value.Name,
 		});
-		
+
 		Data.Items = items;
 		Data.ItemNameSearch = new ReadOnlyDictionary<string, SkyblockItemNameSearch>(nameSearch);
-		
+
 		return;
 
 		// The key for items needs the '-' replaced with a ':'
 		string ItemKeySelector(string fileName) => fileName.Replace("-", ":");
 	}
-	
+
 	private async Task LoadSkyblockPets(string repoPath)
 	{
 		var folderPath = Path.Combine(repoPath, Manifest?.Paths.Pets ?? "pets");
 		Data.Pets = await LoadDataAsync<SkyblockPetData>(folderPath, DefaultKeySelector);
 	}
-	
+
 	private static string DefaultKeySelector(string file) => file;
+	
+	private async Task LoadNeuItems(string repoPath)
+	{
+		var folderPath = Path.Combine(repoPath, "items");
+		var neuItems = await LoadDataAsync<NeuItemData>(folderPath, DefaultKeySelector);
+		
+		_logger.LogInformation("Loaded {Count} NEU items", neuItems.Count);
+
+		foreach (var (id, item) in neuItems)
+		{
+			if (item.ItemId != "minecraft:skull") continue;
+			
+			var sbRepoItem = Data.Items.GetValueOrDefault(id);
+			if (sbRepoItem is null || sbRepoItem.Data?.Skin is not null) continue;
+			
+			var extractedSkin = SkyblockRepoRegexUtils.ExtractSkullTexture(item.NbtTag);
+			if (extractedSkin is null) continue;
+			
+			sbRepoItem.Data ??= new SkyblockItemResponse();
+			sbRepoItem.Data.Skin = new ItemSkin()
+			{
+				Value = extractedSkin.Value,
+				Signature = extractedSkin.Signature
+			};
+		}
+		
+		Data.NeuItems = neuItems;
+	}
 	
 	/// <summary>
 	/// Loads and deserializes JSON files from a specified folder into a read-only dictionary.
@@ -214,13 +211,13 @@ public class SkyblockRepoUpdater(SkyblockRepoConfiguration configuration, ILogge
 	/// <param name="keySelector">A function that takes a file name (without extension) and returns the desired dictionary key.</param>
 	/// <returns>A read-only dictionary of the loaded data.</returns>
 	private async Task<ReadOnlyDictionary<string, TModel>> LoadDataAsync<TModel>(
-	    string folderPath,
-	    Func<string, string> keySelector) where TModel : class
+		string folderPath,
+		Func<string, string> keySelector) where TModel : class
 	{
 	    var modelName = typeof(TModel).Name;
 	    if (!Directory.Exists(folderPath))
 	    {
-	        logger.LogWarning("Directory for {ModelName} not found: {Path}", modelName, folderPath);
+	        _logger.LogWarning("Directory for {ModelName} not found: {Path}", modelName, folderPath);
 	        return new ReadOnlyDictionary<string, TModel>(new Dictionary<string, TModel>());
 	    }
 
@@ -244,45 +241,11 @@ public class SkyblockRepoUpdater(SkyblockRepoConfiguration configuration, ILogge
 	            }
 	            catch (Exception e)
 	            {
-	                logger.LogError(e, "Error loading {ModelName} from {FilePath}!", modelName, filePath);
+	                _logger.LogError(e, "Error loading {ModelName} from {FilePath}!", modelName, filePath);
 	            }
 	        });
 
-	    logger.LogInformation("Loaded {Count} {ModelName} models successfully!", data.Count, modelName);
+	    _logger.LogInformation("Loaded {Count} {ModelName} models successfully!", data.Count, modelName);
 	    return new ReadOnlyDictionary<string, TModel>(data);
-	}
-
-	private async Task<DownloadMeta?> GetLastDownloadMeta()
-	{
-		var metaPath = Path.Combine(configuration.FileStoragePath, "meta.json");
-		if (!File.Exists(metaPath)) return null;
-
-		try
-		{
-			await using var stream = File.OpenRead(metaPath);
-			return await JsonSerializer.DeserializeAsync<DownloadMeta>(stream, _jsonSerializerOptions);
-		} catch (Exception e)
-		{
-			logger.LogError(e, "Error loading download meta!");
-			return null;
-		}
-	}
-	
-	private async Task SaveDownloadMeta(DownloadMeta meta)
-	{
-		var metaPath = Path.Combine(configuration.FileStoragePath, "meta.json");
-		try
-		{
-			await using var stream = File.Create(metaPath + ".tmp");
-			await JsonSerializer.SerializeAsync(stream, meta, _jsonSerializerOptions);
-			await stream.FlushAsync();
-			stream.Close();
-			
-			File.Move(metaPath + ".tmp", metaPath, true);
-			logger.LogInformation("Saved download meta successfully!");
-		} catch (Exception e)
-		{
-			logger.LogError(e, "Error saving download meta!");
-		}
 	}
 }

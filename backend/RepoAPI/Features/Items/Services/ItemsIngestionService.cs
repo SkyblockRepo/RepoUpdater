@@ -7,6 +7,7 @@ using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
+using SkyblockRepo;
 
 namespace RepoAPI.Features.Items.Services;
 
@@ -19,6 +20,7 @@ public class ItemsIngestionService(
     JsonWriteQueue writeQueue,
     WikiItemsIngestionService wikiItemsIngestionService,
     HybridCache hybridCache,
+    ISkyblockRepoClient skyblockRepoClient,
     ILogger<ItemsIngestionService> logger) 
 {
     public async Task IngestItemsDataAsync() {
@@ -46,9 +48,21 @@ public class ItemsIngestionService(
         
         // Use a new list for items to be added to avoid modifying the context while iterating
         var itemsToAdd = new List<SkyblockItem>();
-
+        
         foreach (var apiItem in itemsFromApi) {
             if (apiItem.Id is null) continue;
+            
+            if (apiItem.Skin is null) {
+                var existingRepoItem = skyblockRepoClient.FindItem(apiItem.Id);
+                if (existingRepoItem?.Data?.Skin is not null)
+                {
+                    apiItem.Skin = new ItemSkin()
+                    {
+                        Value = existingRepoItem.Data.Skin.Value,
+                        Signature = existingRepoItem.Data.Skin.Signature
+                    };
+                }
+            }
             
             if (existingItems.TryGetValue(apiItem.Id, out var existingItem)) {
                 // Check if the item data has changed
@@ -129,6 +143,25 @@ public class ItemsIngestionService(
             newCount++;
                 
             await WriteChangesToFile(newItem);
+        }
+        
+        foreach (var existingItem in existingItems.Values)
+        {
+            if (existingItem.Data?.Skin is not null) continue;
+            var repoItem = skyblockRepoClient.FindItem(existingItem.InternalId);
+            if (repoItem?.Data?.Skin is null) continue;
+
+            existingItem.Data ??= new ItemResponse();
+            existingItem.Data.Id ??= existingItem.InternalId;
+            existingItem.Data.Skin = new ItemSkin()
+            {
+                Value = repoItem.Data.Skin.Value,
+                Signature = repoItem.Data.Skin.Signature
+            };
+            
+            context.SkyblockItems.Update(existingItem);
+            await WriteChangesToFile(existingItem);
+            updatedCount++;
         }
         
         if (itemsToAdd.Count != 0) {
