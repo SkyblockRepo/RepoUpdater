@@ -3,31 +3,66 @@ namespace SkyblockRepo;
 public class SkyblockRepoConfiguration
 {
 	/// <summary>
-	/// The path where repo files will be stored to. Defaults to an OS-appropriate folder
-	/// Ex: %LOCALAPPDATA%/SkyblockRepo on Windows (adapts for other OSes)
+	/// The root path where all repo files will be stored.
 	/// </summary>
-	public string FileStoragePath { get; set; } = 
+	public string FileStoragePath { get; set; } =
 		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SkyblockRepo");
-	
-	/// <summary>
-	/// GitHub repository URL for SkyblockRepo. Defaults to https://skyblockrepo.com/repo
-	/// Can be changed to use a fork or a different repository.
-	/// Note: The repository must follow the same structure as the original SkyblockRepo repository.
-	/// </summary>
-	public string SkyblockRepoUrl { get; set; } = "https://skyblockrepo.com/repo";
-	
-	/// <summary>
-	/// Path to the zip file of the main branch of the SkyblockRepo repository. Defaults to /archive/refs/heads/main.zip
-	/// </summary>
-	public string SkyblockRepoZipPath { get; set; } = "/archive/refs/heads/main.zip";
-	
-	/// <summary>
-	/// The endpoint to poll for updates with ETag support. Defaults to https://api.github.com/repos/SkyblockRepo/Repo/branches/main
-	/// </summary>
-	public string SkyblockRepoApiEndpoint { get; set; } = "https://api.github.com/repos/SkyblockRepo/Repo/branches/main";
 
 	/// <summary>
-	/// Set this to a local path to use a local clone of the repo instead of cloning from GitHub.
+	/// Set to true to also download and use data from the NotEnoughUpdates repository.
 	/// </summary>
-	public string? LocalRepoPath { get; set; }
+	public bool UseNeuRepo { get; set; } = false;
+
+	/// <summary>
+	/// Settings for the primary SkyblockRepo.
+	/// </summary>
+	public RepoSettings SkyblockRepo { get; set; } = new()
+	{
+		Name = "skyblockrepo",
+		Url = "https://github.com/SkyblockRepo/Repo",
+		ZipPath = "/archive/refs/heads/main.zip",
+		ApiEndpoint = "https://api.github.com/repos/SkyblockRepo/Repo/commits/main"
+	};
+
+	/// <summary>
+	/// Settings for the NotEnoughUpdates repository.
+	/// </summary>
+	public RepoSettings NeuRepo { get; set; } = new()
+	{
+		Name = "neu",
+		Url = "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO",
+		ZipPath = "/archive/refs/heads/master.zip",
+		ApiEndpoint = "https://api.github.com/repos/NotEnoughUpdates/NotEnoughUpdates-REPO/commits/master"
+	};
+}
+
+/// <summary>
+/// Contains all the settings required to update a single repository.
+/// </summary>
+public class RepoSettings
+{
+	/// <summary>
+	/// The unique name for this repository (e.g., "skyblockrepo", "neu").
+	/// </summary>
+	public string Name { get; set; } = string.Empty;
+
+	/// <summary>
+	/// The base URL of the repository (e.g., https://github.com/User/Repo).
+	/// </summary>
+	public string Url { get; set; } = string.Empty;
+
+	/// <summary>
+	/// The relative path to the zip archive from the base URL.
+	/// </summary>
+	public string ZipPath { get; set; } = string.Empty;
+
+	/// <summary>
+	/// The API endpoint to poll for updates using an ETag.
+	/// </summary>
+	public string ApiEndpoint { get; set; } = string.Empty;
+
+	/// <summary>
+	/// An optional local file path to use instead of downloading.
+	/// </summary>
+	public string? LocalPath { get; set; }
 }

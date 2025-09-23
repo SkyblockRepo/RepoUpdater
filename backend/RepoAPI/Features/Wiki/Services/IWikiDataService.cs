@@ -29,7 +29,7 @@ public interface IWikiDataService
 	Task<List<string>> GetAllWikiNpcsAsync();
 	Task<List<string>> GetAllWikiRecipesAsync();
 	Task<List<string>> GetAllWikiZonesAsync();
-	Task<List<string>> GetAllWikiShops();
+	Task<List<string>> GetAllWikiShopsAsync();
 	Task<List<string>> GetAllLootTablesAsync();
 	Task<string> GetPageContentAsync(string title);
 	Task<AttributeListTemplateDto> GetAttributeListAsync();
@@ -313,7 +313,7 @@ public class WikiDataService(IWikiApi wikiApi) : IWikiDataService
 		return await GetWikiCategoryAsync("DataRecipe");
 	}
 	
-	public async Task<List<string>> GetAllWikiShops()
+	public async Task<List<string>> GetAllWikiShopsAsync()
 	{
 		return await GetWikiCategoryAsync("NPC_UI_Templates");
 	}

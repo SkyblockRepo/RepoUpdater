@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-using NSubstitute;
 using RepoAPI.Features.Wiki.Templates;
 using SkyblockRepo;
 using SkyblockRepo.Models;
@@ -26,12 +24,15 @@ public class CostParserTests
 	{
 		var input = @"{{Item/PUMPKIN_DICER|lore}}\n\n&7Cost\n&6Gold medal\n&aJacob's Ticket &8x32";
 		
-		var logger = Substitute.For<ILogger<SkyblockRepoUpdater>>();
 		var config = new SkyblockRepoConfiguration
 		{
-			LocalRepoPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output")
+			UseNeuRepo = false,
+			SkyblockRepo = new RepoSettings
+			{
+				LocalPath = Path.Join(SkyblockRepoUtils.GetSolutionPath(), "..", "output")
+			}
 		};
-		var updater = new SkyblockRepoUpdater(config, logger);
+		var updater = new SkyblockRepoUpdater(config);
 		var repo = new SkyblockRepoClient(updater);
 		
 		await repo.InitializeAsync(TestContext.Current.CancellationToken);

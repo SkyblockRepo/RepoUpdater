@@ -26,7 +26,7 @@ public class ShopIngestionService(
         const int batchSize = 50;
         var newEntities = 0;
         var updatedEntities = 0;
-        var allNpcIds = await wikiService.GetAllWikiShops();
+        var allNpcIds = await wikiService.GetAllWikiShopsAsync();
 
         if (allNpcIds.Count == 0)
         {
