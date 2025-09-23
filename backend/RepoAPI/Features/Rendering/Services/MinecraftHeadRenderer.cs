@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
@@ -58,8 +59,8 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 	[
 		new(1, 0), new(0, 0), new(0, 1), new(1, 1)
 	];
-	// I don't know why this face needs to be flipped, but it does
 	private static readonly Vector2[] BackFaceUvMap = [new(1, 1), new(0, 1), new(0, 0), new(1, 0)];
+	private static readonly Vector2[] BottomFaceUvMap = [new(0, 1), new(1, 1), new(1, 0), new(0, 0)];
 
 	// Define faces with correct winding order and UV mappings
 	private static readonly FaceData[] FaceDefinitions =
@@ -75,10 +76,10 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 		// Top face (+Y)
 		new FaceData(Face.Top, [Vertices[3], Vertices[2], Vertices[6], Vertices[7]], StandardUvMap),
 		// Bottom face (-Y)
-		new FaceData(Face.Bottom, [Vertices[4], Vertices[5], Vertices[1], Vertices[0]], StandardUvMap)
+		new FaceData(Face.Bottom, [Vertices[4], Vertices[5], Vertices[1], Vertices[0]], BottomFaceUvMap)
 	];
 
-	public Task<Image<Rgba32>> RenderIsometricHeadAsync(IsometricRenderOptions options, CancellationToken ct = default)
+	public async Task<Image<Rgba32>> RenderIsometricHeadAsync(IsometricRenderOptions options, CancellationToken ct = default)
 	{
 		// Isometric view: showing front, right, and top faces (or left if specified)
 		const float isometricRightYaw = -135f;
@@ -95,7 +96,7 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 			ShowOverlay: options.ShowOverlay
 		);
 
-		return RenderHeadAsync(fullOptions, ct);
+		return await RenderHeadAsync(fullOptions, ct);
 	}
 
 	public async Task<Image<Rgba32>> RenderHeadAsync(RenderOptions options, CancellationToken ct = default)
@@ -113,15 +114,18 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 			options.PitchInDegrees * deg2Rad,
 			options.RollInDegrees * deg2Rad
 		);
+		
+		var initialCapacity = options.ShowOverlay ? FaceDefinitions.Length * 4 : FaceDefinitions.Length * 2;
+		var visibleTriangles = new List<VisibleTriangle>(initialCapacity);
 
 		// Process base layer
-		var visibleTriangles = ProcessFaces(FaceDefinitions, transform, skin, false);
+		ProcessFaces(FaceDefinitions, transform, false, visibleTriangles);
 
 		// Process overlay layer if enabled
 		if (options.ShowOverlay)
 		{
 			var overlayTransform = Matrix4x4.CreateScale(1.125f) * transform;
-			visibleTriangles.AddRange(ProcessFaces(FaceDefinitions, overlayTransform, skin, true));
+			ProcessFaces(FaceDefinitions, overlayTransform, true, visibleTriangles);
 		}
 
 		// Sort triangles by depth (back to front)
@@ -132,19 +136,24 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 		var scale = options.Size / 1.75f;
 		var offset = new Vector2(options.Size / 2f);
 
+		// Pre-calculate perspective parameters if needed
+		PerspectiveParams? perspectiveParams = options.PerspectiveAmount > 0.01f ? 
+			new PerspectiveParams(options.PerspectiveAmount, 10.0f, 10.0f) : 
+			null;
+
 		// Render triangles
 		foreach (var tri in visibleTriangles)
 		{
-			var p1 = ProjectToScreen(tri.V1, scale, offset, options.PerspectiveAmount);
-			var p2 = ProjectToScreen(tri.V2, scale, offset, options.PerspectiveAmount);
-			var p3 = ProjectToScreen(tri.V3, scale, offset, options.PerspectiveAmount);
+			var p1 = ProjectToScreen(tri.V1, scale, offset, perspectiveParams);
+			var p2 = ProjectToScreen(tri.V2, scale, offset, perspectiveParams);
+			var p3 = ProjectToScreen(tri.V3, scale, offset, perspectiveParams);
 
 			RasterizeTriangle(canvas, p1, p2, p3, tri.T1, tri.T2, tri.T3, skin, tri.TextureRect);
 		}
 
 		return canvas;
 	}
-
+	
 	private static Matrix4x4 CreateRotationMatrix(float yaw, float pitch, float roll)
 	{
 		// Apply rotations in Y-X-Z order
@@ -163,18 +172,16 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 			0, 0, 0, 1
 		);
 	}
-
-	private static Vector2 ProjectToScreen(Vector3 point, float scale, Vector2 offset, float perspectiveAmount = 0f)
+	
+	private static Vector2 ProjectToScreen(Vector3 point, float scale, Vector2 offset, PerspectiveParams? perspectiveParams)
 	{
-		// Orthographic projection to 2D screen space (flip Y for screen coordinates)
-		if (perspectiveAmount <= 0.01f) {
+		if (perspectiveParams == null)
+		{
 			return new Vector2(point.X * scale + offset.X, -point.Y * scale + offset.Y);
 		}
 		
 		// Calculate the full perspective projection
-		const float cameraDistance = 10.0f;
-		const float focalLength = 10.0f;
-		var perspectiveFactor = focalLength / (cameraDistance - point.Z);
+		var perspectiveFactor = perspectiveParams.Value.FocalLength / (perspectiveParams.Value.CameraDistance - point.Z);
 		var perspX = point.X * perspectiveFactor;
 		var perspY = point.Y * perspectiveFactor;
 
@@ -182,8 +189,8 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 		var orthoX = point.X;
 		var orthoY = point.Y;
 		
-		var finalX = orthoX + (perspX - orthoX) * perspectiveAmount;
-		var finalY = orthoY + (perspY - orthoY) * perspectiveAmount;
+		var finalX = orthoX + (perspX - orthoX) * perspectiveParams.Value.Amount;
+		var finalY = orthoY + (perspY - orthoY) * perspectiveParams.Value.Amount;
 
 		return new Vector2(
 			finalX * scale + offset.X,
@@ -191,37 +198,35 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 		);
 	}
 
-	private static List<VisibleTriangle> ProcessFaces(FaceData[] faces, Matrix4x4 transform, Image<Rgba32> skin,
-		bool isOverlay)
+	private static void ProcessFaces(FaceData[] faces, Matrix4x4 transform,
+		bool isOverlay, List<VisibleTriangle> triangles)
 	{
-		var triangles = new List<VisibleTriangle>(faces.Length * 2);
 		var mappings = isOverlay ? OverlayMappings : BaseMappings;
+		Span<Vector3> transformed = stackalloc Vector3[4];
 
 		foreach (var face in faces)
 		{
 			// Extract texture for this face
 			var texRect = mappings[face.FaceType];
-			var transformed = new Vector3[4];
+			
 			for (var i = 0; i < 4; i++)
 			{
 				transformed[i] = Vector3.Transform(face.Vertices[i], transform);
 			}
 
 			// Backface culling for non-overlay faces
-			// Overlay faces are always drawn to ensure visibility around edges
 			if (!isOverlay) {
 				// Calculate face normal for backface culling
-				var normal = Vector3.Cross(
-					transformed[1] - transformed[0],
-					transformed[2] - transformed[0]
-				);
+				var v1 = transformed[1] - transformed[0];
+				var v2 = transformed[2] - transformed[0];
+				var normal = Vector3.Cross(v1, v2);
 
 				// Skip back-facing triangles
 				if (normal.Z < 0) continue;
 			}
 
 			// Calculate average depth for sorting
-			var depth = (transformed[0].Z + transformed[1].Z + transformed[2].Z + transformed[3].Z) / 4f;
+			var depth = (transformed[0].Z + transformed[1].Z + transformed[2].Z + transformed[3].Z) * 0.25f;
 
 			// Create two triangles for the quad
 			triangles.Add(new VisibleTriangle(
@@ -236,8 +241,6 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 				texRect, depth
 			));
 		}
-
-		return triangles;
 	}
 
 	private static void RasterizeTriangle(
@@ -247,7 +250,7 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 		Image<Rgba32> skin, Rectangle textureRect)
 	{
 		var area = (p2.X - p1.X) * (p3.Y - p1.Y) - (p3.X - p1.X) * (p2.Y - p1.Y);
-		if (Math.Abs(area) < 0.01f) return; // Degenerate triangle
+		if (MathF.Abs(area) < 0.01f) return; // Degenerate triangle
 		
 		// Pre-calculate values that are constant for every pixel in the triangle.
 		var v0 = p2 - p1;
@@ -258,20 +261,24 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 		var denom = d00 * d11 - d01 * d01;
 
 		// If the denominator is zero, the triangle is degenerate (a line or point).
-		if (Math.Abs(denom) < 1e-6f) return;
+		if (MathF.Abs(denom) < 1e-6f) return;
     
 		var baryData = new BarycentricData(v0, v1, d00, d01, d11, denom);
 		
 		// Calculate bounding box
-		var minX = (int)Math.Max(0, Math.Min(Math.Min(p1.X, p2.X), p3.X));
-		var minY = (int)Math.Max(0, Math.Min(Math.Min(p1.Y, p2.Y), p3.Y));
-		var maxX = (int)Math.Min(canvas.Width - 1, Math.Ceiling(Math.Max(Math.Max(p1.X, p2.X), p3.X)));
-		var maxY = (int)Math.Min(canvas.Height - 1, Math.Ceiling(Math.Max(Math.Max(p1.Y, p2.Y), p3.Y)));
+		var minX = (int)MathF.Max(0, MathF.Min(MathF.Min(p1.X, p2.X), p3.X));
+		var minY = (int)MathF.Max(0, MathF.Min(MathF.Min(p1.Y, p2.Y), p3.Y));
+		var maxX = (int)MathF.Min(canvas.Width - 1, MathF.Ceiling(MathF.Max(MathF.Max(p1.X, p2.X), p3.X)));
+		var maxY = (int)MathF.Min(canvas.Height - 1, MathF.Ceiling(MathF.Max(MathF.Max(p1.Y, p2.Y), p3.Y)));
+
+		// Pre-calculate texture dimensions for clamping
+		var texWidth = textureRect.Width - 1;
+		var texHeight = textureRect.Height - 1;
 
 		// Rasterize triangle
 		Parallel.For((long) minY, maxY + 1, y =>
 		{
-			// Get a span for the current row for fast, direct memory access.
+			// Get a span for the current row for direct memory access.
 			// Dangerous, but should be fine as canvas's lifetime is not at risk here.
 			var canvasRow = canvas.DangerousGetPixelRowMemory((int) y).Span;
 
@@ -285,20 +292,19 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 
 				var texCoord = t1 * bary.X + t2 * bary.Y + t3 * bary.Z;
          
-				var texX = (int)Math.Clamp(texCoord.X * textureRect.Width, 0, textureRect.Width - 1);
-				var texY = (int)Math.Clamp(texCoord.Y * textureRect.Height, 0, textureRect.Height - 1);
+				var texX = (int)MathF.Max(0, MathF.Min(texCoord.X * textureRect.Width, texWidth));
+				var texY = (int)MathF.Max(0, MathF.Min(texCoord.Y * textureRect.Height, texHeight));
 
 				var color = skin[textureRect.X + texX, textureRect.Y + texY];
          
-				if (color.A > 10)
-				{
-					// Write directly to the canvas row's memory via the span.
+				if (color.A > 10) {
 					canvasRow[x] = color;
 				}
 			}
 		});
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static Vector3 GetBarycentric(Vector2 p1, Vector2 p, in BarycentricData data)
 	{
 		var v2 = p - p1;
@@ -335,4 +341,6 @@ public class MinecraftHeadRenderer(HttpClient httpClient)
 		float Depth);
 	
 	private readonly record struct BarycentricData(Vector2 V0, Vector2 V1, float D00, float D01, float D11, float Denom);
+	
+	private readonly record struct PerspectiveParams(float Amount, float CameraDistance, float FocalLength);
 }
