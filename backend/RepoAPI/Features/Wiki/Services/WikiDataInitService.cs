@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Data;
 using RepoAPI.Features.Enchantments.Services;
+using RepoAPI.Features.Misc;
 using RepoAPI.Features.NPCs.Services;
 using RepoAPI.Features.Pets.Services;
 using RepoAPI.Features.Recipes.Services;
@@ -20,10 +21,13 @@ public class WikiDataInitService(
 	NpcIngestionService npcIngestionService,
 	ZoneIngestionService zoneIngestionService,
 	ShopIngestionService shopIngestionService,
+	MiscDataUpdater miscDataUpdater,
 	HybridCache hybridCache)
 {
 	public async Task InitializeWikiDataIfNeededAsync(CancellationToken ct)
 	{
+		await miscDataUpdater.UpdateMiscDataAsync(ct);
+		
 		await hybridCache.GetOrCreateAsync(
 			"pets-exist",
 			async c => {
@@ -159,7 +163,6 @@ public class WikiDataInitService(
 		if (!shopsExist) {
 			await shopIngestionService.FetchAndLoadDataAsync(ct);
 		}
-		// await InitializeAttributeShards(ct);
 	}
 	
 	private async Task InitializeAttributeShards(CancellationToken ct)

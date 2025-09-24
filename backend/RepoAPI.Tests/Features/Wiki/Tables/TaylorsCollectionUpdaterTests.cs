@@ -2,7 +2,7 @@ using RepoAPI.Features.Wiki.Templates;
 
 namespace RepoAPI.Tests.Features.Wiki.Tables;
 
-public class TaylorsCollectionTests
+public class TaylorsCollectionUpdaterTests
 {
 	[Fact]
 	public void TaylorCollectionParseTest()

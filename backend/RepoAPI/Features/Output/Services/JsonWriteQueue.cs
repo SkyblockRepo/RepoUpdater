@@ -10,7 +10,7 @@ public class JsonWriteQueue
 	private readonly Channel<EntityWriteRequest> _queue = Channel.CreateUnbounded<EntityWriteRequest>();
 	public static DateTimeOffset LastWriteQueuedAt { get; set; } = DateTimeOffset.MinValue;
 	
-	public async ValueTask QueueWriteAsync(EntityWriteRequest request)
+	public async Task QueueWriteAsync(EntityWriteRequest request)
 	{
 		LastWriteQueuedAt = DateTimeOffset.UtcNow;
 		await _queue.Writer.WriteAsync(request);

@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Humanizer;
 using SkyblockRepo;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Wiki.Templates;
 
@@ -347,8 +348,14 @@ public static partial class ParserUtils
         
         return text;
     }
-    
+
     public static string FillInItemLoreTemplates(string wikitext)
+    {
+        SkyblockItemData? itemData = null;
+        return FillInItemLoreTemplates(wikitext, ref itemData);
+    }
+    
+    public static string FillInItemLoreTemplates(string wikitext, ref SkyblockItemData? item)
     {
         if (string.IsNullOrWhiteSpace(wikitext)) return wikitext;
         
@@ -356,11 +363,55 @@ public static partial class ParserUtils
         while (match.Success)
         {
             var itemName = match.Groups[1].Value.Trim();
-            var item = SkyblockRepoClient.Instance.FindItem(itemName);
+            item ??= SkyblockRepoClient.Instance.FindItem(itemName);
             if (item is null) break;
             wikitext = wikitext.Replace(match.Value, item.NameAndLore);
             match = ItemLoreTemplateNameRegex().Match(wikitext);
         }
+        return wikitext;
+    }
+    
+    public static string FillInItemNameTemplates(string wikitext, ref SkyblockItemData? item)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext)) return wikitext;
+        
+        var match = ItemNameTemplateNameRegex().Match(wikitext);
+        while (match.Success)
+        {
+            var itemName = match.Groups[1].Value.Trim();
+            item ??= SkyblockRepoClient.Instance.FindItem(itemName);
+            if (item is null) break;
+            wikitext = wikitext.Replace(match.Value, item.Name ?? itemName);
+            match = ItemNameTemplateNameRegex().Match(wikitext);
+        }
+        return wikitext;
+    }
+    
+    public static string FillInItemTierTemplates(string wikitext, ref SkyblockItemData? item)
+    {
+        if (string.IsNullOrWhiteSpace(wikitext)) return wikitext;
+        
+        var match = ItemTierTemplateNameRegex().Match(wikitext);
+        while (match.Success)
+        {
+            var itemName = match.Groups[1].Value.Trim();
+            item ??= SkyblockRepoClient.Instance.FindItem(itemName);
+            if (item is null) break;
+            wikitext = wikitext.Replace(match.Value, item.Data?.Tier ?? "Common");
+            match = ItemTierTemplateNameRegex().Match(wikitext);
+        }
+        return wikitext;
+    }
+    
+    public static string FillInItemTemplates(string wikitext, out SkyblockItemData? item)
+    {
+        item = null;
+        if (string.IsNullOrWhiteSpace(wikitext)) return wikitext;
+        
+        wikitext = FillInItemLoreTemplates(wikitext, ref item);
+        wikitext = FillInItemNameTemplates(wikitext, ref item);
+        wikitext = FillInItemTierTemplates(wikitext, ref item);
+        
         return wikitext;
     }
 
@@ -369,6 +420,12 @@ public static partial class ParserUtils
         
     [GeneratedRegex(@"\{\{Item[_\/](.*?)(?:\|lore)?\}\}", RegexOptions.IgnoreCase | RegexOptions.Singleline, "en-US")]
     private static partial Regex ItemLoreTemplateNameRegex();
+    
+    [GeneratedRegex(@"\{\{Item[_\/](.*?)(?:\|name)?\}\}", RegexOptions.IgnoreCase | RegexOptions.Singleline, "en-US")]
+    private static partial Regex ItemNameTemplateNameRegex();
+    
+    [GeneratedRegex(@"\{\{Item[_\/](.*?)(?:\|tier)?\}\}", RegexOptions.IgnoreCase | RegexOptions.Singleline, "en-US")]
+    private static partial Regex ItemTierTemplateNameRegex();
     
     /// <summary>
     /// Gets a list item from a bulleted line
