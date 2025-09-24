@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SkyblockRepo.Models;
+using SkyblockRepo.Models.Misc;
 using SkyblockRepo.Models.Neu;
 
 namespace SkyblockRepo;
@@ -113,9 +114,11 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
     {
         _logger.LogInformation("Loading data from primary SkyblockRepo...");
         var mainRepoPath = _skyblockRepoUpdater.RepoPath;
+        
         await LoadManifest(mainRepoPath);
         await LoadSkyblockItems(mainRepoPath);
         await LoadSkyblockPets(mainRepoPath);
+        await LoadMiscData(mainRepoPath);
         
         if (_neuRepoUpdater is not null)
         {
@@ -171,6 +174,18 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 	{
 		var folderPath = Path.Combine(repoPath, Manifest?.Paths.Pets ?? "pets");
 		Data.Pets = await LoadDataAsync<SkyblockPetData>(folderPath, DefaultKeySelector);
+	}
+	
+	private async Task LoadMiscData(string repoPath)
+	{
+		// Load Taylor Collections
+		var folderPath = Path.Combine(repoPath, "misc");
+		
+		var taylorCollections = await LoadFileAsync<TaylorCollection>(Path.Combine(folderPath, "taylors_collection.json"));
+		Data.TaylorCollection = taylorCollections ?? new TaylorCollection();
+
+		var seasonalBundles = await LoadFileAsync<TaylorCollection>(Path.Combine(folderPath, "seasonal_bundles.json"));
+		Data.SeasonalBundles = seasonalBundles ?? new TaylorCollection();
 	}
 
 	private static string DefaultKeySelector(string file) => file;
@@ -247,5 +262,26 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 
 	    _logger.LogInformation("Loaded {Count} {ModelName} models successfully!", data.Count, modelName);
 	    return new ReadOnlyDictionary<string, TModel>(data);
+	}
+	
+	private async Task<TModel?> LoadFileAsync<TModel>(string filePath) where TModel : class
+	{
+		if (!File.Exists(filePath))
+		{
+			_logger.LogWarning("File not found: {FilePath}", filePath);
+			return null;
+		}
+
+		try
+		{
+			await using var stream = File.OpenRead(filePath);
+			var model = await JsonSerializer.DeserializeAsync<TModel>(stream, _jsonSerializerOptions);
+			return model;
+		}
+		catch (Exception e)
+		{
+			_logger.LogError(e, "Error loading file: {FilePath}", filePath);
+			return null;
+		}
 	}
 }

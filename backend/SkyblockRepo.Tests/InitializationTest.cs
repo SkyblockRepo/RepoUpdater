@@ -24,5 +24,8 @@ public class SkyblockRepoInitializeTests
 
 		SkyblockRepoClient.Data.Items.Count.ShouldBeGreaterThan(5000);
 		SkyblockRepoClient.Data.Pets.Count.ShouldBe(79);
+		
+		SkyblockRepoClient.Data.TaylorCollection.Items.Count.ShouldBeGreaterThan(1);
+		SkyblockRepoClient.Data.SeasonalBundles.Items.Count.ShouldBeGreaterThan(1);
 	}
 }
