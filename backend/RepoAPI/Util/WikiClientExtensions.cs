@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using Refit;
 using RepoAPI.Features.Wiki.Services;
 
@@ -38,7 +40,15 @@ public static class WikiClientExtensions
 				return handler;
 			})
 			.AddHttpMessageHandler<LoggingDelegatingHandler>()
-			.AddStandardResilienceHandler();
+			.AddStandardResilienceHandler(opt =>
+			{
+				opt.Retry = new HttpRetryStrategyOptions
+				{
+					MaxRetryAttempts = 5,
+					Delay = TimeSpan.FromSeconds(2),
+					BackoffType = DelayBackoffType.Exponential
+				};
+			});
 		
 		return builder;
 	}
