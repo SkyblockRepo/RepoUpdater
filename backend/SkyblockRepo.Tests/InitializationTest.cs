@@ -27,5 +27,7 @@ public class SkyblockRepoInitializeTests
 		
 		SkyblockRepoClient.Data.TaylorCollection.Items.Count.ShouldBeGreaterThan(1);
 		SkyblockRepoClient.Data.SeasonalBundles.Items.Count.ShouldBeGreaterThan(1);
+		
+		SkyblockRepoClient.Instance.FindItem("Brown Mushroom")?.InternalId.ShouldBe("BROWN_MUSHROOM");
 	}
 }

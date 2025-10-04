@@ -65,10 +65,10 @@ public class SkyblockRepoClient : ISkyblockRepoClient
 		if (string.IsNullOrWhiteSpace(itemIdOrName))
 			throw new ArgumentException("Item ID or name must be provided.", nameof(itemIdOrName));
 
-		itemIdOrName = itemIdOrName.ToUpperInvariant();
+		var searchInput = itemIdOrName.ToUpperInvariant();
 		
 		// First, try to find by exact item ID
-		if (Data.Items.TryGetValue(itemIdOrName, out var itemById))
+		if (Data.Items.TryGetValue(searchInput.Replace(" ", "_"), out var itemById))
 		{
 			return itemById;
 		}
@@ -76,23 +76,26 @@ public class SkyblockRepoClient : ISkyblockRepoClient
 		// If not found by ID, search by name (case-insensitive substring match)
 		var matchingItems = Data.ItemNameSearch.Values
 			.Where(item => !string.IsNullOrWhiteSpace(item.Name) &&
-			               (item.NameUpper.Contains(itemIdOrName) || item.IdToNameUpper.Contains(itemIdOrName)))
+			               (item.NameUpper.Contains(searchInput) || item.IdToNameUpper.Contains(searchInput)))
+			.OrderBy(item => item.NameUpper == searchInput ? 0 : 1)
+			.ThenBy(item => item.NameUpper.StartsWith(searchInput) ? 0 : 1)
+			.ThenBy(item => item.Name!.Length)                    
 			.ToList();
 
 		if (matchingItems.Count == 0)
 		{
-			if (itemIdOrName.Contains("BLOCK OF ")) {
+			if (searchInput.Contains("BLOCK OF ")) {
 				// Try making "BLOCK OF COAL" into "COAL BLOCK"
-				return FindItem(itemIdOrName.Replace("BLOCK OF ", "") + " BLOCK");
+				return FindItem(searchInput.Replace("BLOCK OF ", "") + " BLOCK");
 			}
-			if (itemIdOrName.Contains("WOOD")) {
+			if (searchInput.Contains("WOOD")) {
 				// Try making "OAK WOOD" into "OAK LOG"
-				return FindItem(itemIdOrName.Replace("WOOD", "LOG"));
+				return FindItem(searchInput.Replace("WOOD", "LOG"));
 			}
 		}
 
 		// If multiple items match, select the one with the shortest name (most fitting)
-		var bestMatch = matchingItems.OrderBy(item => item.Name!.Length).FirstOrDefault();
+		var bestMatch = matchingItems.FirstOrDefault();
 		return bestMatch is not null ? Data.Items.GetValueOrDefault(bestMatch.InternalId) : null;
 	}
 }
