@@ -167,14 +167,23 @@ public class GitSyncService(
         var (remoteExists, _) = await RunGitAsync($"ls-remote --exit-code --heads origin {branch}", _outputBasePath);
         if (remoteExists)
         {
-            // Start from remote branch
-            await RunGitAsync($"checkout -B {branch} origin/{branch}", _outputBasePath);
+            // Use existing branch if already checked out to preserve history
+            var (_, localBranches) = await RunGitAsync("branch --list", _outputBasePath);
+            var branchExistsLocally = localBranches
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Any(b => b.Trim().EndsWith(branch));
 
-            // Rebase on latest main to keep it up to date
-            var (rebaseMainSuccess, rebaseMainOutput) = await RunGitAsync($"rebase origin/{mainBranch}", _outputBasePath);
-            if (!rebaseMainSuccess)
+            if (branchExistsLocally) {
+                await RunGitAsync($"checkout {branch}", _outputBasePath);
+            } else {
+                await RunGitAsync($"checkout -B {branch} origin/{branch}", _outputBasePath);
+            }
+
+            // Rebase onto main if needed
+            var (rebaseSuccess, rebaseOutput) = await RunGitAsync($"rebase origin/{mainBranch}", _outputBasePath);
+            if (!rebaseSuccess)
             {
-                logger.LogError("Failed to rebase on main. Aborting sync cycle.\n{Output}", rebaseMainOutput);
+                logger.LogError("Failed to rebase on main. Aborting sync cycle.\n{Output}", rebaseOutput);
                 await RunGitAsync("rebase --abort", _outputBasePath);
                 return;
             }
