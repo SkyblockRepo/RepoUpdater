@@ -5,6 +5,7 @@ using RepoAPI.Features.Wiki.Templates;
 using SkyblockRepo;
 using SkyblockRepo.Models;
 using TimeSpanParserUtil;
+using ItemSkin = EliteFarmers.HypixelAPI.DTOs.ItemSkin;
 
 namespace RepoAPI.Features.Pets.PetTemplate;
 
@@ -13,7 +14,7 @@ public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
 {
     [GeneratedRegex(@"\{\{Pet/doc\|(?<id>[A-Z0-9_]+)\}\}", RegexOptions.Compiled)]
     private static partial Regex PetInternalId();
-
+    
     public PetTemplateDto Parse(string wikitext, string backupId = "")
     {
         var dto = new PetTemplateDto();
@@ -121,6 +122,7 @@ public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
         foreach (var (rarityKey, lore) in dto.Lore)
         {
             var rarity = rarityKey.ToLowerInvariant();
+            var rarityIndex = rarityOrder.IndexOf(rarity);
             
             var coinValue = dto.AdditionalProperties.TryGetValue($"{rarity}_value", out var value) 
                 ? ParserUtils.GetNumberFromTemplate(value.ToString())
@@ -129,19 +131,34 @@ public partial class PetTemplateParser : ITemplateParser<PetTemplateDto>
             var katUpgrade = false;
             if (katUpgradeable && katStartIndex != -1 && katEndIndex != -1)
             {
-                var rarityIndex = rarityOrder.IndexOf(rarity);
                 if (rarityIndex >= katStartIndex && rarityIndex < katEndIndex)
                 {
                     katUpgrade = true;
                 }
             }
 
-            dto.PetRarities.TryAdd(rarity.ToUpperInvariant(), new PetRarityDto
+            var rarityDto = new PetRarityDto
             {
                 Lore = lore,
                 Value = coinValue,
                 KatUpgradeable = katUpgrade,
-            });
+            };
+            
+            var neuItem = SkyblockRepoClient.Instance.FindNeuItem($"{dto.InternalId};{rarityIndex}");
+            if (neuItem is not null)
+            {
+                var skull = SkyblockRepoRegexUtils.ExtractSkullTexture(neuItem.NbtTag);
+                if (skull is not null) 
+                {
+                    rarityDto.Skin = new ItemSkin()
+                    {
+                        Value = skull.Value,
+                        Signature = skull.Signature
+                    };
+                }
+            }
+
+            dto.PetRarities.TryAdd(rarity.ToUpperInvariant(), rarityDto);
         }
         
         var templateStart = dto.Kat.IndexOf("{{Kat Cost", StringComparison.Ordinal);

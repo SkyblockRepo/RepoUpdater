@@ -1,4 +1,5 @@
 using SkyblockRepo.Models;
+using SkyblockRepo.Models.Neu;
 
 namespace SkyblockRepo;
 
@@ -21,6 +22,12 @@ public class SkyblockRepoClient : ISkyblockRepoClient
 		_updater = updater;
 		Instance = this;
 	}
+	
+	/// <summary>
+	/// Gets the current Skyblock Repo data in memory.
+	/// </summary>
+	/// <returns></returns>
+	public SkyblockRepoData GetData() => Data;
 	
 	/// <summary>
 	/// Initialize the Skyblock Repo client and load existing data. Downloads data if not already present.
@@ -97,5 +104,15 @@ public class SkyblockRepoClient : ISkyblockRepoClient
 		// If multiple items match, select the one with the shortest name (most fitting)
 		var bestMatch = matchingItems.FirstOrDefault();
 		return bestMatch is not null ? Data.Items.GetValueOrDefault(bestMatch.InternalId) : null;
+	}
+
+	/// <summary>
+	/// Gets Neu item data by its internal ID.
+	/// </summary>
+	/// <param name="internalId"></param>
+	/// <returns></returns>
+	public NeuItemData? FindNeuItem(string internalId)
+	{
+		return Data.NeuItems.GetValueOrDefault(internalId);	
 	}
 }

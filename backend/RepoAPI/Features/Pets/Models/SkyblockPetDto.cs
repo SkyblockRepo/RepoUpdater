@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using RepoAPI.Core.Models;
 using Riok.Mapperly.Abstractions;
 using SkyblockRepo.Models;
+using ItemSkin = EliteFarmers.HypixelAPI.DTOs.ItemSkin;
 using PetFlags = RepoAPI.Features.Pets.PetTemplate.PetFlags;
 
 namespace RepoAPI.Features.Pets.Models;
@@ -52,6 +52,9 @@ public class PetRarityDto
 	public Dictionary<string, string> Lore { get; set; } = new();
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public double Value { get; set; }
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public ItemSkin? Skin { get; set; }
 	
 	public bool KatUpgradeable { get; set; }
 	

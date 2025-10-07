@@ -135,7 +135,7 @@ public class WikiDataInitService(
 		// await InitializeWikiItems(ct);
 		
 		var petsExist = await context.SkyblockPets.AnyAsync(ct);
-		if (petsExist) {
+		if (!petsExist) {
 			await petsIngestionService.FetchAndLoadDataAsync(ct);
 		}
 		
