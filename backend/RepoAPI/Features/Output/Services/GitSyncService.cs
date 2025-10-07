@@ -209,6 +209,15 @@ public class GitSyncService(
         }
 
         logger.LogInformation("Committed changes to branch '{Branch}'.", branch);
+        
+        // Rebase the branch on the latest main to prevent duplicate commits after PR merges
+        var (rebaseSuccess, rebaseOutput) = await RunGitAsync($"rebase origin/{mainBranch}", _outputBasePath);
+        if (!rebaseSuccess)
+        {
+            logger.LogError("Rebase failed, aborting sync. Output:\n{Output}", rebaseOutput);
+            await RunGitAsync("rebase --abort", _outputBasePath);
+            return;
+        }
 
         // Force push is still required because the rebase rewrites the branch's history
         var (pushSuccess, pushOutput) = await RunGitAsync($"push -u origin {branch} --force", _outputBasePath);
