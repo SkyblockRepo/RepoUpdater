@@ -10,6 +10,9 @@ public class SkyblockPetRarityData
 	
 	public bool KatUpgradeable { get; set; }
 	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public ItemSkin? Skin { get; set; }
+	
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public List<UpgradeCost>? KatUpgradeCosts { get; set; }
 	
