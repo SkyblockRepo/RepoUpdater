@@ -178,6 +178,9 @@ public class GitSyncService(
             } else {
                 await RunGitAsync($"checkout -B {branch} origin/{branch}", _outputBasePath);
             }
+            
+            await RunGitAsync($"fetch origin {branch}", _outputBasePath);
+            await RunGitAsync($"merge --ff-only origin/{branch}", _outputBasePath);
         } else {
             // Branch doesn't exist remotely — create from main
             await RunGitAsync($"checkout -B {branch} origin/{mainBranch}", _outputBasePath);
