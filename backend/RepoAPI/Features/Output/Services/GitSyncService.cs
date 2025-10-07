@@ -35,7 +35,7 @@ public class GitSyncService(
         foreach (var file in Directory.EnumerateFiles(Path.Combine(_overridesBasePath, "data"), "*.json", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(Path.Combine(_overridesBasePath, "data"), file);
-            var dest = Path.Combine(Path.Combine(_overridesBasePath, "data"), relative);
+            var dest = Path.Combine(_outputBasePath, relative);
 
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
 
@@ -146,6 +146,7 @@ public class GitSyncService(
         }
 
         var branch = _config.TargetBranch;
+        var mainBranch = _config.MainBranch;
 
         var botName = $"{_config.AppName}[bot]";
         var botEmail = $"{_config.AppId}+{_config.AppName}[bot]@users.noreply.github.com";
@@ -163,36 +164,34 @@ public class GitSyncService(
         await RunGitAsync("fetch origin", _outputBasePath);
 
         // Try to switch to the branch if it exists locally
-        var (switchExitCode, _) = await RunGitAsync($"switch {branch}", _outputBasePath);
-        if (switchExitCode != 0)
+        var (switchSuccess, _) = await RunGitAsync($"switch {branch}", _outputBasePath);
+        if (!switchSuccess)
         {
-            // If it doesn't exist locally, try to create it from the remote tracking branch
-            var (checkoutTrackExitCode, _) = await RunGitAsync($"checkout --track origin/{branch}", _outputBasePath);
-            if (checkoutTrackExitCode != 0)
-            {
-                // If it also doesn't exist on the remote, create it fresh from the main branch
-                logger.LogInformation("Branch '{Branch}' not found locally or on remote. Creating new branch from '{MainBranch}'.", branch, _config.MainBranch);
-                await RunGitAsync($"checkout -b {branch} origin/{_config.MainBranch}", _outputBasePath);
-            }
+            var (checkoutSuccess, _) = await RunGitAsync($"checkout -b {branch} origin/{mainBranch}", _outputBasePath);
+            if (!checkoutSuccess) return;
         }
         
         // If the remote branch exists, reset our local version to match it exactly.
         // This cleans up any mess from previous failed runs and resolves any divergence.
-        var (remoteBranchExists, _) = await RunGitAsync($"ls-remote --exit-code --heads origin {branch}", _outputBasePath);
-        if (remoteBranchExists == 0)
+        var (remoteBranchExistsSuccess, _) = await RunGitAsync($"ls-remote --exit-code --heads origin {branch}", _outputBasePath);
+        if (remoteBranchExistsSuccess)
         {
             await RunGitAsync($"reset --hard origin/{branch}", _outputBasePath);
         }
         
         // Rebase the branch on top of the latest main branch to incorporate updates.
         // This keeps the PR's history clean and relative to the current main.
-        var (rebaseExitCode, rebaseOutput) = await RunGitAsync($"rebase origin/{_config.MainBranch}", _outputBasePath);
-        if (rebaseExitCode != 0)
+        var (rebaseSuccess, rebaseOutput) = await RunGitAsync($"rebase origin/{_config.MainBranch}", _outputBasePath);
+        if (!rebaseSuccess)
         {
             logger.LogError("Failed to rebase on main, likely due to conflicts. Aborting sync cycle. Output:\n{Output}", rebaseOutput);
             await RunGitAsync("rebase --abort", _outputBasePath); // Clean up the failed rebase
             return; 
         }
+        
+        // Soft reset to main to ensure we are exactly on top of it
+        if (!(await RunGitAsync($"reset --soft origin/{mainBranch}", _outputBasePath)).Success) return;
+
         // Stage all changes
         await RunGitAsync("add .", _outputBasePath);
 
@@ -207,12 +206,12 @@ public class GitSyncService(
         }
         
         // Only commit if there are changes
-        var (commitExitCode, commitOutput) = await RunGitAsync(
+        var (commitSuccess, commitOutput) = await RunGitAsync(
             $"commit -m \"Automated Sync {DateTime.UtcNow:O}\"",
             _outputBasePath
         );
 
-        if (commitExitCode != 0)
+        if (!commitSuccess)
         {
             logger.LogError("Commit failed. Output:\n{Output}", commitOutput);
             return;
@@ -221,17 +220,16 @@ public class GitSyncService(
         logger.LogInformation("Committed changes to branch '{Branch}'.", branch);
 
         // Force push is still required because the rebase rewrites the branch's history
-        var (pushExitCode, pushOutput) = await RunGitAsync($"push -u origin {branch} --force", _outputBasePath);
+        var (pushSuccess, pushOutput) = await RunGitAsync($"push -u origin {branch} --force", _outputBasePath);
 
-        if (pushExitCode == 0)
+        if (pushSuccess)
         {
             logger.LogInformation("Successfully pushed changes to branch '{Branch}'.", branch);
             await CreatePullRequestIfNeededAsync(client, branch, _config.MainBranch);
         }
         else
         {
-            logger.LogError("Failed to push changes. ExitCode={Code}\nOutput:\n{Output}", 
-                pushExitCode, pushOutput);
+            logger.LogError("Failed to push changes. \nOutput:\n{Output}", pushOutput);
         }
     }
     
@@ -243,11 +241,10 @@ public class GitSyncService(
             return;
         }
 
-        var (pullExitCode, pullOutput) = await RunGitAsync("pull origin main", _overridesBasePath);
-        if (pullExitCode != 0)
+        var (pullSuccess, pullOutput) = await RunGitAsync("pull origin main", _overridesBasePath);
+        if (!pullSuccess)
         {
-            logger.LogError("Failed to pull overrides. ExitCode={Code}\nOutput:\n{Output}", 
-                pullExitCode, pullOutput);
+            logger.LogError("Failed to pull overrides. Output:\n{Output}", pullOutput);
         }
         else
         {
@@ -291,7 +288,7 @@ public class GitSyncService(
         }
     }
 
-    private async Task<(int ExitCode, string Output)> RunGitAsync(string arguments, string workingDir)
+    private async Task<(bool Success, string Output)> RunGitAsync(string arguments, string workingDir)
     {
         var psi = new ProcessStartInfo("git", arguments)
         {
@@ -312,9 +309,10 @@ public class GitSyncService(
         if (process.ExitCode != 0)
         {
             logger.LogInformation("Git command 'git {Arguments}' failed with exit code {ProcessExitCode}.", arguments, process.ExitCode);
+            return (false, output.ToString());
         }
         
-        return (process.ExitCode, output.ToString());
+        return (true, output.ToString());
     }
 
     private static string GetOutputBasePath()
