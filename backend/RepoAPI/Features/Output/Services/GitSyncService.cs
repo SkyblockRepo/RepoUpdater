@@ -179,18 +179,8 @@ public class GitSyncService(
                 return;
             }
         } else {
-            // Branch doesn’t exist remotely — create from main
+            // Branch doesn't exist remotely — create from main
             await RunGitAsync($"checkout -B {branch} origin/{mainBranch}", _outputBasePath);
-        }
-        
-        // Rebase the branch on top of the latest main branch to incorporate updates.
-        // This keeps the PR's history clean and relative to the current main.
-        var (rebaseSuccess, rebaseOutput) = await RunGitAsync($"rebase origin/{_config.MainBranch}", _outputBasePath);
-        if (!rebaseSuccess)
-        {
-            logger.LogError("Failed to rebase on main, likely due to conflicts. Aborting sync cycle. Output:\n{Output}", rebaseOutput);
-            await RunGitAsync("rebase --abort", _outputBasePath); // Clean up the failed rebase
-            return; 
         }
         
         // Stage all changes
