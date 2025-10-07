@@ -163,20 +163,24 @@ public class GitSyncService(
         // Fetch latest changes from the remote
         await RunGitAsync("fetch origin", _outputBasePath);
 
-        // Try to switch to the branch if it exists locally
-        var (switchSuccess, _) = await RunGitAsync($"switch {branch}", _outputBasePath);
-        if (!switchSuccess)
+        // Switch to the target branch, creating it if it doesn't exist
+        var (remoteExists, _) = await RunGitAsync($"ls-remote --exit-code --heads origin {branch}", _outputBasePath);
+        if (remoteExists)
         {
-            var (checkoutSuccess, _) = await RunGitAsync($"checkout -b {branch} origin/{mainBranch}", _outputBasePath);
-            if (!checkoutSuccess) return;
-        }
-        
-        // If the remote branch exists, reset our local version to match it exactly.
-        // This cleans up any mess from previous failed runs and resolves any divergence.
-        var (remoteBranchExistsSuccess, _) = await RunGitAsync($"ls-remote --exit-code --heads origin {branch}", _outputBasePath);
-        if (remoteBranchExistsSuccess)
-        {
-            await RunGitAsync($"reset --hard origin/{branch}", _outputBasePath);
+            // Start from remote branch
+            await RunGitAsync($"checkout -B {branch} origin/{branch}", _outputBasePath);
+
+            // Rebase on latest main to keep it up to date
+            var (rebaseMainSuccess, rebaseMainOutput) = await RunGitAsync($"rebase origin/{mainBranch}", _outputBasePath);
+            if (!rebaseMainSuccess)
+            {
+                logger.LogError("Failed to rebase on main. Aborting sync cycle.\n{Output}", rebaseMainOutput);
+                await RunGitAsync("rebase --abort", _outputBasePath);
+                return;
+            }
+        } else {
+            // Branch doesn’t exist remotely — create from main
+            await RunGitAsync($"checkout -B {branch} origin/{mainBranch}", _outputBasePath);
         }
         
         // Rebase the branch on top of the latest main branch to incorporate updates.
@@ -189,9 +193,6 @@ public class GitSyncService(
             return; 
         }
         
-        // Soft reset to main to ensure we are exactly on top of it
-        if (!(await RunGitAsync($"reset --soft origin/{mainBranch}", _outputBasePath)).Success) return;
-
         // Stage all changes
         await RunGitAsync("add .", _outputBasePath);
 
