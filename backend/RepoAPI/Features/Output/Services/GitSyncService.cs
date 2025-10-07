@@ -159,44 +159,68 @@ public class GitSyncService(
         );
         await RunGitAsync($"remote set-url origin {patUrl}", _outputBasePath);
 
-        // Fetch and check out branch
+        // Fetch latest changes from the remote
         await RunGitAsync("fetch origin", _outputBasePath);
+
+        // Try to switch to the branch if it exists locally
+        var (switchExitCode, _) = await RunGitAsync($"switch {branch}", _outputBasePath);
+        if (switchExitCode != 0)
+        {
+            // If it doesn't exist locally, try to create it from the remote tracking branch
+            var (checkoutTrackExitCode, _) = await RunGitAsync($"checkout --track origin/{branch}", _outputBasePath);
+            if (checkoutTrackExitCode != 0)
+            {
+                // If it also doesn't exist on the remote, create it fresh from the main branch
+                logger.LogInformation("Branch '{Branch}' not found locally or on remote. Creating new branch from '{MainBranch}'.", branch, _config.MainBranch);
+                await RunGitAsync($"checkout -b {branch} origin/{_config.MainBranch}", _outputBasePath);
+            }
+        }
         
-        // Create or reset the target branch from the latest main branch.
-        await RunGitAsync($"checkout -B {branch} origin/{_config.MainBranch}", _outputBasePath);
-
-        await RunGitAsync($"branch --set-upstream-to=origin/{branch} {branch}", _outputBasePath);
-
-        // Stage
+        // If the remote branch exists, reset our local version to match it exactly.
+        // This cleans up any mess from previous failed runs and resolves any divergence.
+        var (remoteBranchExists, _) = await RunGitAsync($"ls-remote --exit-code --heads origin {branch}", _outputBasePath);
+        if (remoteBranchExists == 0)
+        {
+            await RunGitAsync($"reset --hard origin/{branch}", _outputBasePath);
+        }
+        
+        // Rebase the branch on top of the latest main branch to incorporate updates.
+        // This keeps the PR's history clean and relative to the current main.
+        var (rebaseExitCode, rebaseOutput) = await RunGitAsync($"rebase origin/{_config.MainBranch}", _outputBasePath);
+        if (rebaseExitCode != 0)
+        {
+            logger.LogError("Failed to rebase on main, likely due to conflicts. Aborting sync cycle. Output:\n{Output}", rebaseOutput);
+            await RunGitAsync("rebase --abort", _outputBasePath); // Clean up the failed rebase
+            return; 
+        }
+        // Stage all changes
         await RunGitAsync("add .", _outputBasePath);
 
         // Check if there’s anything to commit
-        var (statusExitCode, statusOutput) = await RunGitAsync("status --porcelain", _outputBasePath);
-        if (statusExitCode != 0)
+        var (_, statusOutput) = await RunGitAsync("status --porcelain", _outputBasePath);
+        if (string.IsNullOrWhiteSpace(statusOutput))
         {
-            logger.LogWarning("Failed to check git status. Output:\n{Output}", statusOutput);
-        }
-
-        if (!string.IsNullOrWhiteSpace(statusOutput))
-        {
-            // Only commit if there are changes
-            var (commitExitCode, commitOutput) = await RunGitAsync(
-                $"commit -m \"Automated Sync {DateTime.UtcNow:O}\"",
-                _outputBasePath
-            );
-
-            if (commitExitCode != 0)
-            {
-                logger.LogError("Commit failed. Output:\n{Output}", commitOutput);
-                return;
-            }
-
-            logger.LogInformation("Committed changes to branch '{Branch}'.", branch);
-        } else {
             logger.LogInformation("No changes detected, skipping commit.");
+            // Even if no new changes, a PR might need to be created if the branch is new
+            await CreatePullRequestIfNeededAsync(client, branch, _config.MainBranch);
+            return;
+        }
+        
+        // Only commit if there are changes
+        var (commitExitCode, commitOutput) = await RunGitAsync(
+            $"commit -m \"Automated Sync {DateTime.UtcNow:O}\"",
+            _outputBasePath
+        );
+
+        if (commitExitCode != 0)
+        {
+            logger.LogError("Commit failed. Output:\n{Output}", commitOutput);
             return;
         }
 
+        logger.LogInformation("Committed changes to branch '{Branch}'.", branch);
+
+        // Force push is still required because the rebase rewrites the branch's history
         var (pushExitCode, pushOutput) = await RunGitAsync($"push -u origin {branch} --force", _outputBasePath);
 
         if (pushExitCode == 0)
