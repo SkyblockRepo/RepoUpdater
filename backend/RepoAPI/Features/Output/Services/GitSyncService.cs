@@ -178,22 +178,13 @@ public class GitSyncService(
             } else {
                 await RunGitAsync($"checkout -B {branch} origin/{branch}", _outputBasePath);
             }
-
-            // Rebase onto main if needed
-            var (rebaseSuccess, rebaseOutput) = await RunGitAsync($"rebase origin/{mainBranch}", _outputBasePath);
-            if (!rebaseSuccess)
-            {
-                logger.LogError("Failed to rebase on main. Aborting sync cycle.\n{Output}", rebaseOutput);
-                await RunGitAsync("rebase --abort", _outputBasePath);
-                return;
-            }
         } else {
             // Branch doesn't exist remotely — create from main
             await RunGitAsync($"checkout -B {branch} origin/{mainBranch}", _outputBasePath);
         }
         
         // Stage all changes
-        await RunGitAsync("add .", _outputBasePath);
+        await RunGitAsync("add -A", _outputBasePath);
 
         // Check if there’s anything to commit
         var (_, statusOutput) = await RunGitAsync("status --porcelain", _outputBasePath);
