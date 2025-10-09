@@ -9,6 +9,9 @@ public class CostParserTests
 	[Fact]
 	public void CostParser_CoinsParsesCorrectly()
 	{
+		SkyblockRepoUpdater.Data = new SkyblockRepoData();
+		_ = new SkyblockRepoClient(new NoOpUpdater(), new SkyblockRepoConfiguration());
+
 		var input = @"{{Item/SAND:1|lore}}\n\n&7Cost\n&620 Coins";
 		var cost = ParserUtils.ParseUpgradeCost(input).Cost;
 
@@ -33,7 +36,7 @@ public class CostParserTests
 			}
 		};
 		var updater = new SkyblockRepoUpdater(config);
-		var repo = new SkyblockRepoClient(updater);
+		var repo = new SkyblockRepoClient(updater, config);
 		
 		await repo.InitializeAsync(TestContext.Current.CancellationToken);
 		
@@ -91,5 +94,12 @@ public class CostParserTests
 		cost5[2].Type.ShouldBe(UpgradeCostType.Item);
 		cost5[2].ItemId.ShouldBe("ENCHANTED_GOLD_BLOCK");
 		cost5[2].Amount.ShouldBe(8);
+	}
+
+	private sealed class NoOpUpdater : ISkyblockRepoUpdater
+	{
+		public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+		public Task CheckForUpdatesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+		public Task ReloadRepoAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 	}
 }

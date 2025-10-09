@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
+using Xunit;
 
 namespace SkyblockRepo.Tests;
 
+[Collection("SkyblockRepoState")]
 public class SkyblockRepoInitializeTests
 {
 	[Fact]
@@ -18,7 +20,7 @@ public class SkyblockRepoInitializeTests
 			}
 		};
 		var updater = new SkyblockRepoUpdater(config);
-		var repo = new SkyblockRepoClient(updater);
+		var repo = new SkyblockRepoClient(updater, config);
 		
 		await repo.InitializeAsync();
 

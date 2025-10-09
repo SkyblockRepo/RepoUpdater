@@ -34,6 +34,20 @@ public class SkyblockRepoConfiguration
 		ZipPath = "/archive/refs/heads/master.zip",
 		ApiEndpoint = "https://api.github.com/repos/NotEnoughUpdates/NotEnoughUpdates-REPO/commits/master"
 	};
+	
+	/// <summary>
+	/// Configuration for how SkyblockRepo should check for variants from your item type.
+	/// </summary>
+	private SkyblockRepoMatcherRegistry _matcher = new();
+
+	/// <summary>
+	/// Registry of matchers used to resolve consumer item types to repo data.
+	/// </summary>
+	public SkyblockRepoMatcherRegistry Matcher
+	{
+		get => _matcher;
+		set => _matcher = value ?? throw new ArgumentNullException(nameof(value));
+	}
 }
 
 /// <summary>

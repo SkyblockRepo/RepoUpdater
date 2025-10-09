@@ -200,7 +200,7 @@ public class ItemsIngestionService(
         await writeQueue.QueueWriteAsync(new EntityWriteRequest(
             Path: $"items/{skyblockItem.InternalId}.json",
             Data: skyblockItem.ToOutputDto(),
-            KeepProperties: [ "recipes" ]
+            KeepProperties: [ "recipes", "variants" ]
         ));
     }
 }

@@ -9,17 +9,20 @@ public interface ISkyblockRepoClient
 	Task CheckForUpdatesAsync(CancellationToken cancellationToken = default);
 	Task ReloadRepoAsync(CancellationToken cancellationToken = default);
 	SkyblockItemData? FindItem(string itemIdOrName);
+	SkyblockItemMatch? MatchItem(object sourceItem);
 }
 
 public class SkyblockRepoClient : ISkyblockRepoClient
 {
 	private readonly ISkyblockRepoUpdater _updater;
+	private readonly SkyblockRepoConfiguration _configuration;
 	public static SkyblockRepoData Data => SkyblockRepoUpdater.Data;
 	public static SkyblockRepoClient Instance { get; private set; } = null!;
 	
-	public SkyblockRepoClient(ISkyblockRepoUpdater updater)
+	public SkyblockRepoClient(ISkyblockRepoUpdater updater, SkyblockRepoConfiguration configuration)
 	{
-		_updater = updater;
+		_updater = updater ?? throw new ArgumentNullException(nameof(updater));
+		_configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 		Instance = this;
 	}
 	
@@ -105,6 +108,88 @@ public class SkyblockRepoClient : ISkyblockRepoClient
 		var bestMatch = matchingItems.FirstOrDefault();
 		return bestMatch is not null ? Data.Items.GetValueOrDefault(bestMatch.InternalId) : null;
 	}
+
+	/// <summary>
+	/// Matches a consumer item against the repo data, returning the primary item and any variant definition.
+	/// </summary>
+	/// <param name="sourceItem">The consumer item instance.</param>
+	/// <returns>A <see cref="SkyblockItemMatch"/> when a corresponding item is found; otherwise, <c>null</c>.</returns>
+	public SkyblockItemMatch? MatchItem(object sourceItem)
+	{
+		if (sourceItem is null)
+		{
+			throw new ArgumentNullException(nameof(sourceItem));
+		}
+
+		var registry = _configuration.Matcher ?? throw new InvalidOperationException("SkyblockRepo matcher registry has not been configured.");
+		if (!registry.TryGetMatcher(sourceItem, out var matcher) || matcher is null)
+		{
+			throw new InvalidOperationException($"No matcher registered for items of type '{sourceItem.GetType().FullName}'.");
+		}
+
+		var item = FindItemUsingMatcher(sourceItem, matcher);
+		if (item is null)
+		{
+			return null;
+		}
+
+		var variant = item.GetMatchingVariant(sourceItem, matcher);
+		return new SkyblockItemMatch(item, variant);
+	}
+	
+	public ISkyblockRepoMatcher GetMatcher(object sourceItem)
+	{
+		if (sourceItem is null)
+		{
+			throw new ArgumentNullException(nameof(sourceItem));
+		}
+
+		var registry = _configuration.Matcher ?? throw new InvalidOperationException("SkyblockRepo matcher registry has not been configured.");
+		if (!registry.TryGetMatcher(sourceItem, out var matcher) || matcher is null)
+		{
+			throw new InvalidOperationException($"No matcher registered for items of type '{sourceItem.GetType().FullName}'.");
+		}
+
+		return matcher;
+	}
+
+	private SkyblockItemData? FindItemUsingMatcher(object sourceItem, ISkyblockRepoMatcher matcher)
+	{
+		var skyblockId = matcher.GetSkyblockId(sourceItem);
+		var item = TryFindItem(skyblockId);
+		if (item is not null)
+		{
+			return item;
+		}
+
+		var name = matcher.GetName(sourceItem);
+		item = TryFindItem(name);
+		if (item is not null)
+		{
+			return item;
+		}
+
+		return null;
+	}
+
+	private SkyblockItemData? TryFindItem(string? searchValue)
+	{
+		if (string.IsNullOrWhiteSpace(searchValue))
+		{
+			return null;
+		}
+
+		try
+		{
+			return FindItem(searchValue);
+		}
+		catch (ArgumentException)
+		{
+			return null;
+		}
+	}
+	
+	
 
 	/// <summary>
 	/// Gets Neu item data by its internal ID.
