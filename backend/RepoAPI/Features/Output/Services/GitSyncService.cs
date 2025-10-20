@@ -194,6 +194,8 @@ public class GitSyncService(
         if (string.IsNullOrWhiteSpace(statusOutput))
         {
             logger.LogInformation("No changes detected, skipping commit.");
+            // Even if no new changes, a PR might need to be created if the branch is new
+            await CreatePullRequestIfNeededAsync(client, branch, _config.MainBranch);
             return;
         }
         
