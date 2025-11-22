@@ -21,6 +21,7 @@ public class WikiDataInitService(
 	NpcIngestionService npcIngestionService,
 	ZoneIngestionService zoneIngestionService,
 	ShopIngestionService shopIngestionService,
+	ShopLinkingService shopLinkingService,
 	MiscDataUpdater miscDataUpdater,
 	HybridCache hybridCache)
 {
@@ -128,6 +129,8 @@ public class WikiDataInitService(
 				LocalCacheExpiration = TimeSpan.FromMinutes(10)
 			}, 
 			cancellationToken: ct);
+			
+		await shopLinkingService.LinkShopsToItemsAsync(ct);
 	}
 	
 	public async Task InitializeWikiDataAsync(CancellationToken ct)
@@ -163,6 +166,8 @@ public class WikiDataInitService(
 		if (!shopsExist) {
 			await shopIngestionService.FetchAndLoadDataAsync(ct);
 		}
+		
+		await shopLinkingService.LinkShopsToItemsAsync(ct);
 	}
 	
 	private async Task InitializeAttributeShards(CancellationToken ct)

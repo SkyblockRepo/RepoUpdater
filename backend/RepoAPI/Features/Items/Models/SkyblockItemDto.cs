@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using EliteFarmers.HypixelAPI.DTOs;
 using RepoAPI.Features.Items.ItemTemplate;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
 using Riok.Mapperly.Abstractions;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Items.Models;
 
@@ -29,22 +29,17 @@ public class SkyblockItemDto
 	public string Lore { get; set; } = string.Empty;
 	
 	public ItemFlags Flags { get; set; } = new();
-    
-	/// <summary>
-	/// Hypixel item data from /resources/skyblock/items
-	/// </summary>
-	public ItemResponse? Data { get; set; }
-	
-	/// <summary>
-	/// Parsed data from the item template on the Hypixel Wiki.
-	/// </summary>
-	public ItemTemplateDto? TemplateData { get; set; }
-	
-	/// <summary>
-	/// Recipes that can produce this item as an output.
-	/// </summary>
-	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public List<SkyblockRecipeDto> Recipes { get; set; } = [];
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public List<ShopSaleDto>? SoldBy { get; set; }
+}
+
+public class ShopSaleDto
+{
+	public required string NpcId { get; set; }
+	public required string NpcName { get; set; }
+	public List<UpgradeCost>? Cost { get; set; }
 }
 
 public static class SkyblockItemExtensions

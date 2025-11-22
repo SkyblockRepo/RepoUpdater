@@ -65,15 +65,15 @@ public static partial class ParserUtils
 					costs.Add(UpgradeCost.JacobMedalCost(itemName.ToLowerInvariant().Replace(" medal", ""), quantity));
 				} else if (itemName.EndsWith(" Pelts"))
 				{
-					var peltCountStr = itemName.Replace(" Pelts", "").Trim();
+					var peltCountStr = itemName.Replace(" Pelts", "").Replace(",", "").Replace(".", "").Trim();
 					if (int.TryParse(peltCountStr, out var peltCount) && peltCount > 0)
 					{
 						costs.Add(UpgradeCost.PeltCost(peltCount * quantity));
 					}
 				} else if (itemName.EndsWith(" Motes"))
 				{
-					var motesCountSr = itemName.Replace(" Motes", "").Trim();
-					if (int.TryParse(motesCountSr, out var motesCount) && motesCount > 0)
+					var motesCountStr = itemName.Replace(" Motes", "").Replace(",", "").Replace(".", "").Trim();
+					if (int.TryParse(motesCountStr, out var motesCount) && motesCount > 0)
 					{
 						costs.Add(UpgradeCost.MoteCost(motesCount * quantity));
 					}

@@ -7,6 +7,7 @@ using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
+using RepoAPI.Features.Bazaar.Services;
 using SkyblockRepo;
 
 namespace RepoAPI.Features.Items.Services;
@@ -21,6 +22,8 @@ public class ItemsIngestionService(
     WikiItemsIngestionService wikiItemsIngestionService,
     HybridCache hybridCache,
     ISkyblockRepoClient skyblockRepoClient,
+    BazaarOutputService bazaarOutputService,
+    ItemNamePopulationService itemNamePopulationService,
     ILogger<ItemsIngestionService> logger) 
 {
     public async Task IngestItemsDataAsync() {
@@ -193,6 +196,9 @@ public class ItemsIngestionService(
                 Expiration = TimeSpan.FromHours(2),
                 LocalCacheExpiration = TimeSpan.FromHours(2)
             });
+        
+        await itemNamePopulationService.PopulateMissingNamesAsync();
+        await bazaarOutputService.GenerateBazaarOutputAsync();
     }
 
     private async Task WriteChangesToFile(SkyblockItem skyblockItem)

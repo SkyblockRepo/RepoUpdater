@@ -21,7 +21,8 @@ public static partial class SkyblockItemMapper
 			Lore = item.Lore,
 			Flags = item.Flags,
 			Data = item.Data,
-			Recipes = item.Recipes.Select(r => r.ToDto()).ToList() ?? []
+			Recipes = item.Recipes.Select(r => r.ToDto()).ToList() ?? [],
+			SoldBy = item.SoldBy
 		};
 	}
 }
@@ -47,4 +48,7 @@ public class SkyblockItemOutputDto
 	/// </summary>
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public List<SkyblockRecipeDto> Recipes { get; set; } = [];
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public List<ShopSaleDto>? SoldBy { get; set; }
 }

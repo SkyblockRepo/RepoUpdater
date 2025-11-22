@@ -10,6 +10,8 @@ public static class WikiClientExtensions
 {
 	public static WebApplicationBuilder AddWikiClient(this WebApplicationBuilder builder)
 	{
+		builder.Services.AddTransient<WikiCacheHandler>();
+		
 		var client = builder.Services.AddRefitClient<IWikiApi>()
 			.ConfigureHttpClient(c =>
 			{
@@ -39,6 +41,7 @@ public static class WikiClientExtensions
           
 				return handler;
 			})
+			.AddHttpMessageHandler<WikiCacheHandler>()
 			.AddHttpMessageHandler<LoggingDelegatingHandler>()
 			.AddStandardResilienceHandler(opt =>
 			{
