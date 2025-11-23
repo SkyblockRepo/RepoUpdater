@@ -37,9 +37,10 @@ public class SkyblockItemDto
 
 public class ShopSaleDto
 {
-	public required string NpcId { get; set; }
-	public required string NpcName { get; set; }
+	public required string Id { get; set; }
+	public required string Name { get; set; }
 	public List<UpgradeCost>? Cost { get; set; }
+	public int Amount { get; set; } = 1;
 }
 
 public static class SkyblockItemExtensions
