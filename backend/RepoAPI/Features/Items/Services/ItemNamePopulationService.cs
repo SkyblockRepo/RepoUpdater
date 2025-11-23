@@ -1,5 +1,6 @@
 using EliteFarmers.HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
+using Quartz.Util;
 using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Wiki.Templates;
@@ -71,6 +72,14 @@ public class ItemNamePopulationService(
 	
 	private static string GetItemName(SkyblockItem item, Dictionary<string, string?> enchantments)
 	{
+		if (!string.IsNullOrWhiteSpace(item.Name) && item.Name != item.InternalId) {
+			return item.Name;
+		}
+		
+		if (!string.IsNullOrWhiteSpace(item.Data?.Name) && item.Data.Name != item.InternalId) {
+			return item.Data.Name;
+		}
+		
 		// Check if this is an enchantment item
 		if (!item.Source.Contains("Enchantment", StringComparison.OrdinalIgnoreCase))
 			return item.InternalId.ToTitleCase();
