@@ -23,7 +23,7 @@ public class ItemNamePopulationService(
 		
 		// Find items that don't have a Data property or have Data but no name
 		var itemsMissingNames = await context.SkyblockItems
-			.Where(i => i.Latest && (i.Data == null || i.Data.Name == null || i.Data.Name == ""))
+			.Where(i => i.Latest && (i.Data == null || i.Data.Name == null || i.Data.Name == "" || i.Name == null || i.Name == "" || i.Name == i.InternalId || i.Data.Id == null || i.Data.Id == ""))
 			.ToListAsync(ct);
 		
 		if (itemsMissingNames.Count == 0)
@@ -45,18 +45,20 @@ public class ItemNamePopulationService(
 		foreach (var item in itemsMissingNames)
 		{
 			var name = GetItemName(item, enchantments);
+
+			if (string.IsNullOrEmpty(item.Name) || item.Name == item.InternalId) {
+				item.Name = name;
+			}
 			
 			// Create or update the Data property
-			if (item.Data == null)
-			{
+			if (item.Data == null) {
 				item.Data = new ItemResponse
 				{
 					Id = item.InternalId,
 					Name = name
 				};
-			}
-			else
-			{
+			} else {
+				item.Data.Id = item.InternalId;
 				item.Data.Name = name;
 			}
 			

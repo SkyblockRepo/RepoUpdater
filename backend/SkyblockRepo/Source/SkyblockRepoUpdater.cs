@@ -208,6 +208,7 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 			if (extractedSkin is null) continue;
 			
 			sbRepoItem.Data ??= new SkyblockItemResponse();
+			sbRepoItem.Data.Id ??= sbRepoItem.InternalId;
 			sbRepoItem.Data.Skin = new ItemSkin()
 			{
 				Value = extractedSkin.Value,
