@@ -51,14 +51,8 @@ public class ItemNamePopulationService(
 				item.Name = name;
 			}
 			
-			// Create or update the Data property
-			if (item.Data == null) {
-				item.Data = new ItemResponse
-				{
-					Id = item.InternalId,
-					Name = name
-				};
-			} else {
+			// Only update Data if it exists
+			if (item.Data is not null) {
 				item.Data.Id = item.InternalId;
 				item.Data.Name = name;
 			}

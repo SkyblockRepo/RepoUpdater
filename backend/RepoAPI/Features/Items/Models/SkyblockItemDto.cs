@@ -62,6 +62,28 @@ public static class SkyblockItemExtensions
 		if (!string.IsNullOrWhiteSpace(newLore)) {
 			item.Lore = ParserUtils.CleanLoreString(newLore);
 		}
-		item.Name = item.Data?.Name ?? templateData?.Data?.Name ?? item.InternalId;
+		
+		var name = templateData?.Data?.Name;
+		
+		if (string.IsNullOrWhiteSpace(name) && item.Data != null && !string.IsNullOrWhiteSpace(item.Data.Name))
+		{
+			name = item.Data.Name;
+		}
+		
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			name = item.InternalId;
+		}
+		
+		item.Name = name!;
+
+		if (item.Data == null)
+		{
+			item.Data = new EliteFarmers.HypixelAPI.DTOs.ItemResponse
+			{
+				Id = item.InternalId,
+				Name = item.Name
+			};
+		}
 	}
 }
