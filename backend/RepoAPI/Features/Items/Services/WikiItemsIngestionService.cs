@@ -92,7 +92,7 @@ public class WikiItemsIngestionService(
         await writeQueue.QueueWriteAsync(new EntityWriteRequest(
             Path: $"items/{skyblockItem.InternalId}.json",
             Data: skyblockItem.ToOutputDto(),
-            KeepProperties: [ "variants", "soldBy" ]
+            KeepProperties: [ "recipes", "variants", "soldBy" ]
         ));
     }
 }

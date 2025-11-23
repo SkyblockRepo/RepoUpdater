@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Quartz.Util;
 using RepoAPI.Features.Items.ItemTemplate;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
 using Riok.Mapperly.Abstractions;
+using SkyblockRepo;
 using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Items.Models;
@@ -72,7 +74,11 @@ public static class SkyblockItemExtensions
 		
 		if (string.IsNullOrWhiteSpace(name))
 		{
-			name = item.InternalId;
+			if (SkyblockRepoClient.Data.NeuItems.TryGetValue(item.InternalId, out var neuItem) && !neuItem.DisplayName.IsNullOrWhiteSpace()) {
+				name = neuItem.DisplayName;
+			} else {
+				name = item.InternalId;
+			}
 		}
 		
 		item.Name = name!;
