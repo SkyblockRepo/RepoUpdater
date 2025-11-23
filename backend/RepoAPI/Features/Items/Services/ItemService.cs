@@ -3,6 +3,7 @@ using RepoAPI.Features.Items.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using RepoAPI.Features.Recipes.Models;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Items.Services;
 

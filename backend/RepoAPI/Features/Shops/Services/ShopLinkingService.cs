@@ -3,6 +3,7 @@ using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Wiki.Templates;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Shops.Services;
 
@@ -52,11 +53,11 @@ public class ShopLinkingService(
                         }
                     }
 
-                    item.SoldBy.Add(new ShopSaleDto
+                    item.SoldBy.Add(new SkyblockSoldBy
                     {
                         Id = shop.InternalId,
                         Name = shop.Name ?? shop.InternalId,
-                        Cost = slot.Cost,
+                        Cost = slot.Cost ?? [],
                         Amount = output.Amount
                     });
                         

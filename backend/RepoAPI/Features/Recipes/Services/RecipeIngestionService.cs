@@ -7,6 +7,7 @@ using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Recipes.Models;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates.RecipeTemplate;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Recipes.Services;
 

@@ -6,6 +6,7 @@ using RepoAPI.Core.Models;
 using RepoAPI.Features.Items.Models;
 using RepoAPI.Util;
 using Riok.Mapperly.Abstractions;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Recipes.Models;
 
@@ -67,12 +68,6 @@ public class RecipeIngredient
 	[MaxLength(512)]
 	public string InternalId { get; set; } = string.Empty;
 	public int Quantity { get; set; } = 1;
-}
-
-[JsonStringEnum]
-public enum RecipeType
-{
-	Crafting,
 }
 
 public class SkyblockRecipeConfiguration : IEntityTypeConfiguration<SkyblockRecipe>

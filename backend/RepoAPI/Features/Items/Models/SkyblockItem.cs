@@ -9,6 +9,7 @@ using RepoAPI.Features.Items.ItemTemplate;
 using RepoAPI.Features.Recipes.Models;
 using Riok.Mapperly.Abstractions;
 using ItemTemplateParser = RepoAPI.Features.Items.ItemTemplate.ItemTemplateParser;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Items.Models;
 
@@ -67,22 +68,7 @@ public class SkyblockItem : IVersionedEntity
 	public List<SkyblockRecipe> Recipes { get; set; } = [];
 	
 	[NotMapped]
-	public List<ShopSaleDto>? SoldBy { get; set; }
-}
-
-public record struct ItemFlags()
-{
-	public bool Tradable { get; set; }
-	public bool Bazaarable { get; set; }
-	public bool Auctionable { get; set; }
-	public bool Reforgeable { get; set; }
-	public bool Enchantable { get; set; }
-	public bool Museumable { get; set; }
-	public bool Soulboundable { get; set; }
-	public bool Sackable { get; set; }
-	
-	[JsonExtensionData]
-	public SortedDictionary<string, object> Other { get; set; } = new();
+	public List<SkyblockSoldBy>? SoldBy { get; set; }
 }
 
 public class SkyblockItemConfiguration : IEntityTypeConfiguration<SkyblockItem>

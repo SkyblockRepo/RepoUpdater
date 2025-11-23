@@ -11,6 +11,10 @@ public class SkyblockRepoData
 	public ReadOnlyDictionary<string, SkyblockItemData> Items { get; set; } = new(new Dictionary<string, SkyblockItemData>());
 	public ReadOnlyDictionary<string, SkyblockItemNameSearch> ItemNameSearch { get; set; } = new(new Dictionary<string, SkyblockItemNameSearch>());
 	public ReadOnlyDictionary<string, SkyblockPetData> Pets { get; set; } = new(new Dictionary<string, SkyblockPetData>());
+	public ReadOnlyDictionary<string, SkyblockEnchantmentData> Enchantments { get; set; } = new(new Dictionary<string, SkyblockEnchantmentData>());
+	public ReadOnlyDictionary<string, SkyblockNpcData> Npcs { get; set; } = new(new Dictionary<string, SkyblockNpcData>());
+	public ReadOnlyDictionary<string, SkyblockShopData> Shops { get; set; } = new(new Dictionary<string, SkyblockShopData>());
+	public ReadOnlyDictionary<string, SkyblockZoneData> Zones { get; set; } = new(new Dictionary<string, SkyblockZoneData>());
 
 	public TaylorCollection TaylorCollection { get; internal set; } = new();
 	public TaylorCollection SeasonalBundles { get; internal set; } = new();

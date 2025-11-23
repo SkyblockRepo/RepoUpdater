@@ -9,6 +9,7 @@ using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
 using RepoAPI.Features.Bazaar.Services;
 using SkyblockRepo;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Items.Services;
 
@@ -59,7 +60,7 @@ public class ItemsIngestionService(
                 var existingRepoItem = skyblockRepoClient.FindItem(apiItem.Id);
                 if (existingRepoItem?.Data?.Skin is not null)
                 {
-                    apiItem.Skin = new ItemSkin()
+                    apiItem.Skin = new EliteFarmers.HypixelAPI.DTOs.ItemSkin()
                     {
                         Value = existingRepoItem.Data.Skin.Value,
                         Signature = existingRepoItem.Data.Skin.Signature
@@ -156,7 +157,7 @@ public class ItemsIngestionService(
 
             existingItem.Data ??= new ItemResponse();
             existingItem.Data.Id ??= existingItem.InternalId;
-            existingItem.Data.Skin = new ItemSkin()
+            existingItem.Data.Skin = new EliteFarmers.HypixelAPI.DTOs.ItemSkin()
             {
                 Value = repoItem.Data.Skin.Value,
                 Signature = repoItem.Data.Skin.Signature

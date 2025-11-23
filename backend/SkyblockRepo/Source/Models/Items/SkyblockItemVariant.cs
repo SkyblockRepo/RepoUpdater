@@ -59,6 +59,7 @@ public class SkyblockItemVariantData
 	/// <summary>
 	/// Gets the name and lore combined, with a newline in between
 	/// </summary>
+	[JsonIgnore]
 	public string NameAndLore => $"{Data?.Name ?? Name}\n{Lore}";
     
 	/// <summary>

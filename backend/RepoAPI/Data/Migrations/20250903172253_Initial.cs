@@ -4,6 +4,7 @@ using EliteFarmers.HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RepoAPI.Features.Items.Models;
+using SkyblockRepo.Models;
 
 #nullable disable
 

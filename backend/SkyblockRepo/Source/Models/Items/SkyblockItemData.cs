@@ -44,6 +44,7 @@ public class SkyblockItemData
 	/// <summary>
 	/// Gets the name and lore combined, with a newline in between
 	/// </summary>
+	[JsonIgnore]
 	public string NameAndLore => $"{Data?.Name ?? Name}\n{Lore}";
     
 	/// <summary>
@@ -63,6 +64,11 @@ public class SkyblockItemData
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public List<SkyblockRecipeData> Recipes { get; set; } = [];
 
+	/// <summary>
+	/// List of NPCs or shops that sell this item.
+	/// </summary>
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public List<SkyblockSoldBy>? SoldBy { get; set; } = [];
 }
 
 public class SkyblockItemNameSearch

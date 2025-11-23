@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RepoAPI.Data;
 using RepoAPI.Features.Items.Models;
+using SkyblockRepo.Models;
 
 #nullable disable
 

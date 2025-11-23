@@ -120,6 +120,11 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
         await LoadSkyblockPets(mainRepoPath);
         await LoadMiscData(mainRepoPath);
         
+        await LoadSkyblockEnchantments(mainRepoPath);
+        await LoadSkyblockNpcs(mainRepoPath);
+        await LoadSkyblockShops(mainRepoPath);
+        await LoadSkyblockZones(mainRepoPath);
+        
         if (_neuRepoUpdater is not null)
         {
             _logger.LogInformation("Loading data from NEU repo...");
@@ -217,6 +222,30 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 		}
 		
 		Data.NeuItems = neuItems;
+	}
+	
+	private async Task LoadSkyblockEnchantments(string repoPath)
+	{
+		var folderPath = Path.Combine(repoPath, "enchantments");
+		Data.Enchantments = await LoadDataAsync<SkyblockEnchantmentData>(folderPath, DefaultKeySelector);
+	}
+
+	private async Task LoadSkyblockNpcs(string repoPath)
+	{
+		var folderPath = Path.Combine(repoPath, "npcs");
+		Data.Npcs = await LoadDataAsync<SkyblockNpcData>(folderPath, DefaultKeySelector);
+	}
+
+	private async Task LoadSkyblockShops(string repoPath)
+	{
+		var folderPath = Path.Combine(repoPath, "shops");
+		Data.Shops = await LoadDataAsync<SkyblockShopData>(folderPath, DefaultKeySelector);
+	}
+
+	private async Task LoadSkyblockZones(string repoPath)
+	{
+		var folderPath = Path.Combine(repoPath, "zones");
+		Data.Zones = await LoadDataAsync<SkyblockZoneData>(folderPath, DefaultKeySelector);
 	}
 	
 	/// <summary>

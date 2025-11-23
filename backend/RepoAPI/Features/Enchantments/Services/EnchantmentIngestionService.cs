@@ -6,6 +6,7 @@ using RepoAPI.Features.Items.Models;
 using RepoAPI.Features.Output.Services;
 using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
+using SkyblockRepo.Models;
 
 namespace RepoAPI.Features.Enchantments.Services;
 

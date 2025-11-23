@@ -29,20 +29,10 @@ public class SkyblockItemDto
 	public string Lore { get; set; } = string.Empty;
 	
 	public ItemFlags Flags { get; set; } = new();
-	public List<SkyblockRecipeDto> Recipes { get; set; } = [];
+	public List<SkyblockRecipeData> Recipes { get; set; } = [];
 	
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public List<ShopSaleDto>? SoldBy { get; set; }
-}
-
-public class ShopSaleDto
-{
-	public required string Id { get; set; }
-	public required string Name { get; set; }
-	public List<UpgradeCost>? Cost { get; set; }
-	
-	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public int Amount { get; set; }
+	public List<SkyblockSoldBy>? SoldBy { get; set; }
 }
 
 public static class SkyblockItemExtensions
