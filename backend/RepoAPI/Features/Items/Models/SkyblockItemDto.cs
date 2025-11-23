@@ -40,7 +40,9 @@ public class ShopSaleDto
 	public required string Id { get; set; }
 	public required string Name { get; set; }
 	public List<UpgradeCost>? Cost { get; set; }
-	public int Amount { get; set; } = 1;
+	
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public int Amount { get; set; }
 }
 
 public static class SkyblockItemExtensions
