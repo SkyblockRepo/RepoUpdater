@@ -63,7 +63,7 @@ public class JsonFileWriterService(
 						if (request.MergeInto && finalNode != null && existingNode != null)
 						{
 							JsonUtils.MergeInto(existingNode, finalNode);
-							continue;
+							finalNode = existingNode;
 						}
 						
 						if (request.KeepProperties is { Count: > 0 } && finalNode is JsonObject finalObj && existingNode is JsonObject existingObj)
