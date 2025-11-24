@@ -31,7 +31,8 @@ public class SkyblockItemDto
 	public string Lore { get; set; } = string.Empty;
 	
 	public ItemFlags Flags { get; set; } = new();
-	public List<SkyblockRecipeData> Recipes { get; set; } = [];
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public List<SkyblockRecipeData>? Recipes { get; set; }
 	
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
 	public List<SkyblockSoldBy>? SoldBy { get; set; }
