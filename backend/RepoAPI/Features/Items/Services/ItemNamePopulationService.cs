@@ -1,8 +1,8 @@
-using EliteFarmers.HypixelAPI.DTOs;
 using Microsoft.EntityFrameworkCore;
-using Quartz.Util;
 using RepoAPI.Data;
+using RepoAPI.Features.Items.ItemTemplate;
 using RepoAPI.Features.Items.Models;
+using RepoAPI.Features.Wiki.Services;
 using RepoAPI.Features.Wiki.Templates;
 using RepoAPI.Util;
 
@@ -18,22 +18,21 @@ public class ItemNamePopulationService(
 	DataContext context,
 	ILogger<ItemNamePopulationService> logger)
 {
+	public ITemplateParser<ItemTemplateDto> ItemTemplateParser { get; } = new ItemTemplateParser();
+	
 	public async Task PopulateMissingNamesAsync(CancellationToken ct = default)
 	{
 		logger.LogInformation("Populating missing item names...");
-		
-		// Find items that don't have a Data property or have Data but no name
-		var itemsMissingNames = await context.SkyblockItems
-			.Where(i => i.Latest && (i.Data == null || i.Data.Name == null || i.Data.Name == "" || i.Name == null || i.Name == "" || i.Name == i.InternalId || i.Data.Id == null || i.Data.Id == ""))
+
+		var allItems = await context.SkyblockItems
+			.Where(i => i.Latest)
 			.ToListAsync(ct);
 		
-		if (itemsMissingNames.Count == 0)
+		if (allItems.Count == 0)
 		{
-			logger.LogInformation("No items missing names.");
+			logger.LogInformation("No items found.");
 			return;
 		}
-		
-		logger.LogInformation("Found {Count} items missing names", itemsMissingNames.Count);
 		
 		// Get all enchantments for lookup
 		var enchantments = await context.SkyblockEnchantments
@@ -43,7 +42,7 @@ public class ItemNamePopulationService(
 		
 		var updatedCount = 0;
 		
-		foreach (var item in itemsMissingNames)
+		foreach (var item in allItems)
 		{
 			var name = GetItemName(item, enchantments);
 
@@ -64,14 +63,22 @@ public class ItemNamePopulationService(
 		logger.LogInformation("Populated names for {Count} items", updatedCount);
 	}
 	
-	private static string GetItemName(SkyblockItem item, Dictionary<string, string?> enchantments)
+	private string GetItemName(SkyblockItem item, Dictionary<string, string?> enchantments)
 	{
-		if (!string.IsNullOrWhiteSpace(item.Name) && item.Name != item.InternalId) {
-			return item.Name;
+		var templateData = item.RawTemplate is null 
+			? null 
+			: new WikiTemplateData<ItemTemplateDto>(ItemTemplateParser.Parse(item.RawTemplate), item.RawTemplate);
+
+		if (!string.IsNullOrWhiteSpace(templateData?.Data?.Name)) {
+			return templateData.Data.Name;
 		}
 		
 		if (!string.IsNullOrWhiteSpace(item.Data?.Name) && item.Data.Name != item.InternalId) {
 			return item.Data.Name;
+		}
+		
+		if (!string.IsNullOrWhiteSpace(item.Name) && item.Name != item.InternalId) {
+			return item.Name;
 		}
 		
 		// Check if this is an enchantment item
