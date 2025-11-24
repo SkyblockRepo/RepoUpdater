@@ -145,14 +145,18 @@ public class GitSyncService(
             return;
         }
 
-        var branch = _config.TargetBranch;
-        var mainBranch = _config.MainBranch;
+        var uri = new Uri(_config.RepositoryUrl);
+        var segments = uri.AbsolutePath.Trim('/').Split('/');
+        var owner = segments[0];
+        var repoName = segments[1].Replace(".git", "");
 
+        // Configure Git User
         var botName = $"{_config.AppName}[bot]";
         var botEmail = $"{_config.AppId}+{_config.AppName}[bot]@users.noreply.github.com";
         await RunGitAsync($"config user.name \"{botName}\"", _outputBasePath);
         await RunGitAsync($"config user.email \"{botEmail}\"", _outputBasePath);
 
+        // Configure Remote with Token
         var token = await serviceProvider.GetRequiredService<IGitHubTokenService>().GetTokenAsync();
         var patUrl = _config.RepositoryUrl.Replace(
             "https://",
@@ -163,27 +167,67 @@ public class GitSyncService(
         // Fetch latest changes from the remote
         await RunGitAsync("fetch origin", _outputBasePath);
 
-        // Switch to the target branch, creating it if it doesn't exist
-        var (remoteExists, _) = await RunGitAsync($"ls-remote --exit-code --heads origin {branch}", _outputBasePath);
-        if (remoteExists)
+        // Determine which branch to use
+        string branchName;
+        bool isNewBranch = false;
+
+        try
         {
-            // Use existing branch if already checked out to preserve history
+            // Check for any open PRs from the bot
+            var pullRequests = await client.PullRequest.GetAllForRepository(owner, repoName, new PullRequestRequest
+            {
+                State = ItemStateFilter.Open,
+                Base = _config.MainBranch
+            });
+
+            // Find a PR that looks like one of ours (starts with automated-sync)
+            var existingPr = pullRequests.FirstOrDefault(pr => pr.Head.Ref.StartsWith("automated-sync"));
+
+            if (existingPr != null)
+            {
+                branchName = existingPr.Head.Ref;
+                logger.LogInformation("Found existing open PR #{Number} on branch '{Branch}'. Continuing work on this branch.", existingPr.Number, branchName);
+            }
+            else
+            {
+                // No open PR, start a fresh branch
+                branchName = $"automated-sync-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
+                isNewBranch = true;
+                logger.LogInformation("No existing open PR found. Starting new branch '{Branch}'.", branchName);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to query GitHub for existing PRs. Falling back to default branch behavior.");
+            branchName = _config.TargetBranch;
+        }
+
+        // Switch to the target branch
+        if (isNewBranch)
+        {
+            // Create new branch from origin/main
+            await RunGitAsync($"checkout -B {branchName} origin/{_config.MainBranch}", _outputBasePath);
+        }
+        else
+        {
+            // Checkout existing branch
+            // Check if it exists locally first
             var (_, localBranches) = await RunGitAsync("branch --list", _outputBasePath);
             var branchExistsLocally = localBranches
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Any(b => b.Trim().EndsWith(branch));
+                .Any(b => b.Trim().EndsWith(branchName));
 
-            if (branchExistsLocally) {
-                await RunGitAsync($"checkout {branch}", _outputBasePath);
-            } else {
-                await RunGitAsync($"checkout -B {branch} origin/{branch}", _outputBasePath);
+            if (branchExistsLocally)
+            {
+                await RunGitAsync($"checkout {branchName}", _outputBasePath);
+                // Ensure we are up to date with remote
+                await RunGitAsync($"pull origin {branchName}", _outputBasePath);
             }
-            
-            await RunGitAsync($"fetch origin {branch}", _outputBasePath);
-            await RunGitAsync($"merge --ff-only origin/{branch}", _outputBasePath);
-        } else {
-            // Branch doesn't exist remotely — create from main
-            await RunGitAsync($"checkout -B {branch} origin/{mainBranch}", _outputBasePath);
+            else
+            {
+                // Exists on remote (because we found a PR), but not locally. Checkout from remote.
+                await RunGitAsync($"checkout -B {branchName} origin/{branchName}", _outputBasePath);
+            }
         }
         
         // Stage all changes
@@ -194,14 +238,15 @@ public class GitSyncService(
         if (string.IsNullOrWhiteSpace(statusOutput))
         {
             logger.LogInformation("No changes detected, skipping commit.");
-            // Even if no new changes, a PR might need to be created if the branch is new
-            await CreatePullRequestIfNeededAsync(client, branch, _config.MainBranch);
             return;
         }
+
+        var changes = ParseGitStatus(statusOutput);
+        var commitMessage = GenerateCommitMessage(changes);
         
         // Only commit if there are changes
         var (commitSuccess, commitOutput) = await RunGitAsync(
-            $"commit -m \"Automated Sync {DateTime.UtcNow:O}\"",
+            $"commit -m \"{commitMessage}\"",
             _outputBasePath
         );
 
@@ -211,24 +256,21 @@ public class GitSyncService(
             return;
         }
 
-        logger.LogInformation("Committed changes to branch '{Branch}'.", branch);
+        logger.LogInformation("Committed changes to branch '{Branch}'.", branchName);
         
-        // Rebase the branch on the latest main to prevent duplicate commits after PR merges
-        var (rebaseSuccess, rebaseOutput) = await RunGitAsync($"rebase origin/{mainBranch}", _outputBasePath);
-        if (!rebaseSuccess)
-        {
-            logger.LogError("Rebase failed, aborting sync. Output:\n{Output}", rebaseOutput);
-            await RunGitAsync("rebase --abort", _outputBasePath);
-            return;
-        }
-
-        // Force push is still required because the rebase rewrites the branch's history
-        var (pushSuccess, pushOutput) = await RunGitAsync($"push -u origin {branch} --force", _outputBasePath);
+        // Push changes
+        var (pushSuccess, pushOutput) = await RunGitAsync($"push -u origin {branchName}", _outputBasePath);
 
         if (pushSuccess)
         {
-            logger.LogInformation("Successfully pushed changes to branch '{Branch}'.", branch);
-            await CreatePullRequestIfNeededAsync(client, branch, _config.MainBranch);
+            logger.LogInformation("Successfully pushed changes to branch '{Branch}'.", branchName);
+            
+            if (isNewBranch)
+            {
+                var prTitle = GeneratePrTitle(changes);
+                var prBody = GeneratePrBody(changes);
+                await CreatePullRequestIfNeededAsync(client, branchName, _config.MainBranch, prTitle, prBody);
+            }
         }
         else
         {
@@ -255,7 +297,7 @@ public class GitSyncService(
         }
     }
 
-    private async Task CreatePullRequestIfNeededAsync(IGitHubClient client, string sourceBranch, string targetBranch)
+    private async Task CreatePullRequestIfNeededAsync(IGitHubClient client, string sourceBranch, string targetBranch, string title, string body)
     {
         try
         {
@@ -277,9 +319,9 @@ public class GitSyncService(
                 return;
             }
 
-            var newPullRequest = new NewPullRequest($"Automated Sync: {sourceBranch}", sourceBranch, targetBranch)
+            var newPullRequest = new NewPullRequest(title, sourceBranch, targetBranch)
             {
-                Body = $"Automated changes synced at `{DateTime.UtcNow:F}`. Please review and merge."
+                Body = body
             };
             
             var createdPullRequest = await client.PullRequest.Create(owner, repoName, newPullRequest);
@@ -289,6 +331,65 @@ public class GitSyncService(
         {
             logger.LogError(ex, "Failed to create pull request for branch {Branch}", sourceBranch);
         }
+    }
+
+    private List<string> ParseGitStatus(string statusOutput)
+    {
+        var files = new List<string>();
+        using var reader = new StringReader(statusOutput);
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.Length < 4) continue;
+            // Format is "XY PATH". We just want the path, trimmed.
+            var path = line.Substring(3).Trim();
+            files.Add(path);
+        }
+        return files;
+    }
+
+    private string GenerateCommitMessage(List<string> files)
+    {
+        if (files.Count == 1)
+        {
+            return $"Update {Path.GetFileName(files[0])}";
+        }
+        
+        if (files.Count <= 3)
+        {
+            var names = files.Select(Path.GetFileName);
+            return $"Update {string.Join(", ", names)}";
+        }
+
+        return $"Update {files.Count} files (including {Path.GetFileName(files[0])})";
+    }
+
+    private string GeneratePrTitle(List<string> files)
+    {
+        return GenerateCommitMessage(files);
+    }
+
+    private string GeneratePrBody(List<string> files)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Automated changes synced at `{DateTime.UtcNow:F}`.");
+        sb.AppendLine();
+        sb.AppendLine("### Changes:");
+        
+        // List up to 10 files
+        foreach (var file in files.Take(10))
+        {
+            sb.AppendLine($"- `{file}`");
+        }
+        
+        if (files.Count > 10)
+        {
+            sb.AppendLine($"- ... and {files.Count - 10} more.");
+        }
+        
+        sb.AppendLine();
+        sb.AppendLine("Please review and merge.");
+        return sb.ToString();
     }
 
     private async Task<(bool Success, string Output)> RunGitAsync(string arguments, string workingDir)
