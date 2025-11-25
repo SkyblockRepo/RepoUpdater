@@ -96,7 +96,11 @@ public class RecipeIngestionService(
 		// };
 		// context.DataIngestionBatches.Add(batch);
 		
-		await WriteChangesToFiles(newVersions.OfType<SkyblockRecipe>().ToList());
+		var allVersions = newVersions.OfType<SkyblockRecipe>()
+			.Concat(existingRecipes.Values.Where(r => !deprecationIds.Contains(r.Id)))
+			.ToList();
+		
+		await WriteChangesToFiles(allVersions);
 
 		// // Create the pending change objects using the batch.Id
 		// var pendingChanges = newVersions
