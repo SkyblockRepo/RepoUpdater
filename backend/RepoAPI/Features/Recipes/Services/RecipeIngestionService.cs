@@ -201,6 +201,7 @@ public class RecipeIngestionService(
 
 		foreach (var (itemId, value) in groupedByItem)
 		{
+			if (string.IsNullOrWhiteSpace(itemId) || value.Count == 0) continue;
 			await writeQueue.QueueWriteAsync(new EntityWriteRequest(
 				Path: $"items/{itemId}.json",
 				Data: new { recipes = value },
