@@ -62,13 +62,13 @@ public class SkyblockItemData
 	/// Recipes that can produce this item as an output.
 	/// </summary>
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public List<SkyblockRecipeData> Recipes { get; set; } = [];
+	public List<SkyblockRecipeData>? Recipes { get; set; }
 
 	/// <summary>
 	/// List of NPCs or shops that sell this item.
 	/// </summary>
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-	public List<SkyblockSoldBy>? SoldBy { get; set; } = [];
+	public List<SkyblockSoldBy>? SoldBy { get; set; }
 }
 
 public class SkyblockItemNameSearch

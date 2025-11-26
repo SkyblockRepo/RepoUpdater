@@ -33,7 +33,7 @@ public static partial class SkyblockItemMapper
 				Other = item.Flags.Other
 			},
 			Data = item.Data?.ToSkyblockItemResponse(),
-			Recipes = item.Recipes.Select(r => r.ToDto()).ToList(),
+			Recipes = item.Recipes != null ? item.Recipes.Select(r => r.ToDto()).ToList() : null,
 			SoldBy = item.SoldBy
 		};
 	}

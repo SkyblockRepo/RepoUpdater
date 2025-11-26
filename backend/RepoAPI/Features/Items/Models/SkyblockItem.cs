@@ -65,7 +65,7 @@ public class SkyblockItem : IVersionedEntity
 	// public ItemTemplateDto? TemplateData { get; set; }
 	public ItemTemplateDto? TemplateData => RawTemplate == null ? null : new ItemTemplateParser().Parse(RawTemplate);
 	
-	public List<SkyblockRecipe> Recipes { get; set; } = [];
+	public List<SkyblockRecipe>? Recipes { get; set; }
 	
 	[NotMapped]
 	public List<SkyblockSoldBy>? SoldBy { get; set; }

@@ -28,7 +28,9 @@ public class WikiItemsIngestionService(
 				var itemId = templateData?.Data?.InternalId;
 				if (itemId is null) continue;
 
-				var item = await context.SkyblockItems.FirstOrDefaultAsync(it => it.InternalId == itemId, ct);
+				var item = await context.SkyblockItems
+					.FirstOrDefaultAsync(it => it.InternalId == itemId, ct);
+				
 				if (item is null)
 				{
 					item = new SkyblockItem
@@ -46,6 +48,10 @@ public class WikiItemsIngestionService(
 					.Where(r => r.Latest && r.ResultInternalId == item.InternalId)
 					.OrderBy(r => r.InternalId)
 					.ToListAsync(ct);
+				
+				if (item.Recipes?.Count is 0) {
+					item.Recipes = null;
+				}
 				
 				item.Name = item.Data?.Name ?? item.InternalId;
 
