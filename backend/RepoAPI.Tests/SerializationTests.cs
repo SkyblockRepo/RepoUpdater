@@ -130,4 +130,64 @@ public class SerializationTests
         // Assert
         Assert.Equal("""[{"type":"new"}]""", finalNode[propToKeep]!.ToJsonString());
     }
+
+    [Fact]
+    public void TestPropertySorting()
+    {
+        // Simulate the SortProperties logic
+        var jsonObject = new JsonObject
+        {
+            ["soldBy"] = new JsonArray(),
+            ["recipes"] = new JsonArray(),
+            ["internalId"] = "TEST"
+        };
+
+        var sorted = SortProperties(jsonObject);
+        
+        Assert.Equal("internalId", keys[0]);
+        Assert.Equal("recipes", keys[1]);
+        Assert.Equal("soldBy", keys[2]);
+    }
+
+    private static JsonObject SortProperties(JsonObject jsonObject)
+    {
+        // Copy of the logic from JsonFileWriterService for testing purposes
+        var propertyOrder = new List<string>
+        {
+            "internalId",
+            "name",
+            "category",
+            "source",
+            "npcValue",
+            "lore",
+            "flags",
+            "data",
+            "variants",
+            "recipes",
+            "soldBy"
+        };
+
+        var sortedObj = new JsonObject();
+
+        foreach (var propName in propertyOrder)
+        {
+            if (jsonObject.TryGetPropertyValue(propName, out var value))
+            {
+                sortedObj.Add(propName, value?.DeepClone());
+                jsonObject.Remove(propName);
+            }
+        }
+
+        var remainingKeys = jsonObject.Select(x => x.Key).OrderBy(k => k).ToList();
+        
+        foreach (var key in remainingKeys)
+        {
+            if (jsonObject.TryGetPropertyValue(key, out var value))
+            {
+                sortedObj.Add(key, value?.DeepClone());
+            }
+        }
+
+        return sortedObj;
+    }
 }

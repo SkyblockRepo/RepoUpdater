@@ -98,6 +98,12 @@ public class JsonFileWriterService(
 					}
 				}
 
+				// Sort properties to ensure stable output
+				if (finalNode is JsonObject finalObjToSort)
+				{
+					finalNode = SortProperties(finalObjToSort);
+				}
+
 				// Serialize the final (potentially merged) node to a JSON string
 				var jsonString = JsonSerializer.Serialize(finalNode, _jsonOptions);
 				if (jsonString.IsNullOrWhiteSpace()) continue;
@@ -128,6 +134,47 @@ public class JsonFileWriterService(
 				logger.LogError(ex, "Failed to write JSON file for {InternalId}", request.Path);
 			}
 		}
+	}
+	
+	private static JsonObject SortProperties(JsonObject jsonObject)
+	{
+		var propertyOrder = new List<string>
+		{
+			"internalId",
+			"name",
+			"category",
+			"source",
+			"npcValue",
+			"lore",
+			"flags",
+			"data",
+			"variants",
+			"recipes",
+			"soldBy"
+		};
+
+		var sortedObj = new JsonObject();
+
+		// Add known properties in order
+		foreach (var propName in propertyOrder) {
+			if (!jsonObject.TryGetPropertyValue(propName, out var value)) continue;
+			
+			sortedObj.Add(propName, value?.DeepClone());
+			jsonObject.Remove(propName);
+		}
+		
+		// Sort the remaining keys alphabetically
+		var remainingKeys = jsonObject.Select(x => x.Key).OrderBy(k => k).ToList();
+		
+		foreach (var key in remainingKeys)
+		{
+			if (jsonObject.TryGetPropertyValue(key, out var value))
+			{
+				sortedObj.Add(key, value?.DeepClone());
+			}
+		}
+
+		return sortedObj;
 	}
 	
 	private static string SanitizeFileName(string fileName)
