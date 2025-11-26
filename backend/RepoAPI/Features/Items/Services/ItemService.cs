@@ -65,6 +65,7 @@ public class ItemService(DataContext context, HybridCache cache, IWebHostEnviron
 			if (recipe.ResultInternalId is null) continue;
 			if (!items.TryGetValue(recipe.ResultInternalId, out var item)) continue;
 			
+			item.Recipes ??= [];
 			item.Recipes.Add(recipe);
 		}
 
