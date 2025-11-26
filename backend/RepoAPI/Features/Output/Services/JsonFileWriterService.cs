@@ -71,7 +71,8 @@ public class JsonFileWriterService(
 							foreach (var propToKeep in request.KeepProperties)
 							{
 								// If the new data doesn't have the property but the old one does, copy it over.
-								if (!finalObj.ContainsKey(propToKeep) && existingObj.TryGetPropertyValue(propToKeep, out var valueToKeep))
+								// Also copy if the new data has the property but it is null (explicit null in JSON).
+								if ((!finalObj.ContainsKey(propToKeep) || finalObj[propToKeep] is null) && existingObj.TryGetPropertyValue(propToKeep, out var valueToKeep))
 								{
 									finalObj[propToKeep] = valueToKeep?.DeepClone();
 									logger.LogDebug("Kept property '{Property}' from existing file {FilePath}", propToKeep, filePath);
