@@ -10,13 +10,15 @@ public record GithubRepoOptions(
 	string FileStoragePath,
 	string ApiEndpoint,
 	string ZipDownloadUrl,
-	string? LocalRepoPath = null
+	string? LocalRepoPath = null,
+	TimeSpan? ForceRefreshInterval = null
 );
 
 public interface IGithubRepoUpdater
 {
 	string RepoPath { get; }
 	Task<bool> CheckForUpdatesAsync(CancellationToken cancellationToken = default);
+	Task<bool> ForceDownloadAsync(CancellationToken cancellationToken = default);
 }
 
 public class GithubRepoUpdater : IGithubRepoUpdater
@@ -57,6 +59,9 @@ public class GithubRepoUpdater : IGithubRepoUpdater
 
 	public bool IsUsingLocalRepo => _options.LocalRepoPath is not null;
 	public string RepoPath => _options.LocalRepoPath ?? Path.Combine(_options.FileStoragePath, $"data-{_options.RepoName}");
+	
+	private static readonly TimeSpan DefaultForceRefreshInterval = TimeSpan.FromHours(1);
+	private TimeSpan ForceRefreshInterval => _options.ForceRefreshInterval ?? DefaultForceRefreshInterval;
 
 	/// <summary>
     /// Checks for repository updates and downloads them if available.
@@ -80,7 +85,33 @@ public class GithubRepoUpdater : IGithubRepoUpdater
         }
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("RepoUpdater");
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        
+        HttpResponseMessage? response = null;
+        try 
+        {
+            response = await _httpClient.SendAsync(request, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{RepoName}] Failed to reach API endpoint {Endpoint}", _options.RepoName, _options.ApiEndpoint);
+        }
+        
+        if (response is null || !response.IsSuccessStatusCode)
+        {
+            if (response is not null)
+            {
+                _logger.LogError("[{RepoName}] Failed to fetch last update from {Endpoint}! Status: {StatusCode}",
+                    _options.RepoName, _options.ApiEndpoint, response.StatusCode);
+            }
+            
+            if (ShouldForceRefresh(existingMeta))
+            {
+                _logger.LogWarning("[{RepoName}] API check failed, but force refresh interval has passed. Forcing download...", _options.RepoName);
+                return await ForceDownloadAsync(cancellationToken);
+            }
+            
+            return false;
+        }
         
         if (response.StatusCode == System.Net.HttpStatusCode.NotModified || response.Headers.ETag?.Tag == existingMeta?.ETag)
         {
@@ -88,23 +119,59 @@ public class GithubRepoUpdater : IGithubRepoUpdater
             return false;
         }
 
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogError("[{RepoName}] Failed to fetch last update from {Endpoint}! Status: {StatusCode}",
-                _options.RepoName, _options.ApiEndpoint, response.StatusCode);
-            return false;
-        }
-
         var etag = response.Headers.ETag?.Tag;
         if (string.IsNullOrWhiteSpace(etag))
         {
             _logger.LogWarning("[{RepoName}] API endpoint did not provide an ETag. Cannot reliably check for updates.", _options.RepoName);
+            
+            if (ShouldForceRefresh(existingMeta))
+            {
+                _logger.LogWarning("[{RepoName}] Force refresh interval has passed. Forcing download...", _options.RepoName);
+                return await ForceDownloadAsync(cancellationToken);
+            }
+            
             return false;
         }
 
         _logger.LogInformation("[{RepoName}] New version found! Downloading...", _options.RepoName);
         await DownloadRepoAsync(etag, cancellationToken);
         return true;
+    }
+    
+    /// <summary>
+    /// Forces a download of the repository, bypassing the ETag check.
+    /// </summary>
+    /// <returns>True if download was successful, otherwise false.</returns>
+    public async Task<bool> ForceDownloadAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsUsingLocalRepo || cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        _logger.LogInformation("[{RepoName}] Force downloading repository...", _options.RepoName);
+        
+        try
+        {
+            await DownloadRepoAsync(GenerateForcedETag(), cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{RepoName}] Force download failed.", _options.RepoName);
+            return false;
+        }
+    }
+    
+    private bool ShouldForceRefresh(DownloadMeta? existingMeta)
+    {
+        if (existingMeta is null) return true;
+        return DateTimeOffset.Now - existingMeta.LastUpdated > ForceRefreshInterval;
+    }
+    
+    private static string GenerateForcedETag()
+    {
+        return $"\"forced-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}\"";
     }
 
     private async Task DownloadRepoAsync(string etag, CancellationToken cancellationToken)
