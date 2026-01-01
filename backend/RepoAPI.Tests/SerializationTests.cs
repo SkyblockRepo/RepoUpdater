@@ -143,6 +143,7 @@ public class SerializationTests
         };
 
         var sorted = SortProperties(jsonObject);
+        var keys = sorted.Select(x => x.Key).ToList();
         
         Assert.Equal("internalId", keys[0]);
         Assert.Equal("recipes", keys[1]);

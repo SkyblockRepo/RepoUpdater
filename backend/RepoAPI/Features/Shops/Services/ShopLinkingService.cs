@@ -23,6 +23,7 @@ public class ShopLinkingService(
 
         var shops = await context.SkyblockShops
             .Where(s => s.Latest)
+            .OrderBy(s => s.InternalId)
             .ToListAsync(ct);
 
         var updatedItems = new HashSet<string>();
@@ -42,16 +43,12 @@ public class ShopLinkingService(
                     
                     item.SoldBy ??= [];
                         
-                    // Check for duplicates
-                    var existingSale = item.SoldBy.FirstOrDefault(s => s.Id == shop.InternalId);
-                    if (existingSale != null)
-                    {
-                        // If exact same cost, skip
-                        if (ParserUtils.DeepJsonEquals(existingSale.Cost, slot.Cost))
-                        {
-                            continue;
-                        }
-                    }
+                    // Check for duplicates - must check ALL entries with matching ID and cost
+                    var isDuplicate = item.SoldBy.Any(s => 
+                        s.Id == shop.InternalId && 
+                        ParserUtils.DeepJsonEquals(s.Cost, slot.Cost));
+                    
+                    if (isDuplicate) continue;
 
                     item.SoldBy.Add(new SkyblockSoldBy
                     {
