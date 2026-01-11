@@ -87,8 +87,20 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
     
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // On startup, check all repos for updates, then load all data once.
-        await CheckForUpdatesAsync(cancellationToken);
+        // Speeds up startup significantly when data is already present
+        var needsDownload = !Directory.Exists(_skyblockRepoUpdater.RepoPath) 
+            || (_neuRepoUpdater is not null && !Directory.Exists(_neuRepoUpdater.RepoPath));
+        
+        if (needsDownload)
+        {
+            _logger.LogInformation("Repository data not found locally. Downloading...");
+            await CheckForUpdatesAsync(cancellationToken);
+        }
+        else
+        {
+            _logger.LogInformation("Repository data found locally. Skipping update check on startup.");
+        }
+        
         await ReloadRepoAsync(cancellationToken);
     }
 
@@ -116,14 +128,15 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
         var mainRepoPath = _skyblockRepoUpdater.RepoPath;
         
         await LoadManifest(mainRepoPath);
-        await LoadSkyblockItems(mainRepoPath);
-        await LoadSkyblockPets(mainRepoPath);
-        await LoadMiscData(mainRepoPath);
-        
-        await LoadSkyblockEnchantments(mainRepoPath);
-        await LoadSkyblockNpcs(mainRepoPath);
-        await LoadSkyblockShops(mainRepoPath);
-        await LoadSkyblockZones(mainRepoPath);
+        await Task.WhenAll(
+            LoadSkyblockItems(mainRepoPath),
+            LoadSkyblockPets(mainRepoPath),
+            LoadMiscData(mainRepoPath),
+            LoadSkyblockEnchantments(mainRepoPath),
+            LoadSkyblockNpcs(mainRepoPath),
+            LoadSkyblockShops(mainRepoPath),
+            LoadSkyblockZones(mainRepoPath)
+        );
         
         if (_neuRepoUpdater is not null)
         {
