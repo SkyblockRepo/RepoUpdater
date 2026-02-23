@@ -4,7 +4,7 @@ namespace SkyblockRepo;
 
 public static partial class SkyblockRepoRegexUtils
 {
-	public record SkullTextureInfo(string Value, string Signature);
+	public record SkullTextureInfo(string Value, string? Signature);
 
 	public static SkullTextureInfo? ExtractSkullTexture(string nbtTag)
 	{
@@ -17,12 +17,11 @@ public static partial class SkyblockRepoRegexUtils
 
 		if (!match.Success) return null;
 		
-		var signature = match.Groups["signature"].Value;
+		var signature = match.Groups["signature"].Success ? match.Groups["signature"].Value : null;
 		var value = match.Groups["value"].Value;
 		return new SkullTextureInfo(value, signature);
-
 	}
 
-	[GeneratedRegex(@"textures:\[0:\{(?=.*?Signature:""(?<signature>.*?)"")(?=.*?Value:""(?<value>.*?)"").*?\}", RegexOptions.Compiled)]
+	[GeneratedRegex(@"textures:\[0:\{(?=.*?Signature:""(?<signature>.*?)"")?(?=.*?Value:""(?<value>.*?)"").*?\}", RegexOptions.Compiled)]
 	private static partial Regex SkullTextureRegex();
 }
