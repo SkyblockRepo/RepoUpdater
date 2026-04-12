@@ -5,9 +5,15 @@ namespace SkyblockRepo;
 
 public static class SkyblockRepoDependencyInjection
 {
-	public static IServiceCollection AddSkyblockRepo(this IServiceCollection services, SkyblockRepoConfiguration? options = null) {
+	public static IServiceCollection AddSkyblockRepo(
+		this IServiceCollection services,
+		SkyblockRepoConfiguration? options = null,
+		Action<IHttpClientBuilder>? configureHttpClient = null) {
 		options ??= new SkyblockRepoConfiguration();
 		services.AddSingleton(options);
+
+		var httpClientBuilder = services.AddHttpClient(GithubRepoUpdater.HttpClientName);
+		configureHttpClient?.Invoke(httpClientBuilder);
 		
 		services.AddSingleton<ISkyblockRepoUpdater>(sp => 
 		{
@@ -23,10 +29,11 @@ public static class SkyblockRepoDependencyInjection
 	}
 
 	public static IServiceCollection AddSkyblockRepo(this IServiceCollection services,
-		Action<SkyblockRepoConfiguration> options)
+		Action<SkyblockRepoConfiguration> options,
+		Action<IHttpClientBuilder>? configureHttpClient = null)
 	{
 		var config = new SkyblockRepoConfiguration();
 		options(config);
-		return services.AddSkyblockRepo(config);
+		return services.AddSkyblockRepo(config, configureHttpClient);
 	}
 }

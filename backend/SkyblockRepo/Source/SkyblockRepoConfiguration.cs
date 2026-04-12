@@ -55,6 +55,8 @@ public class SkyblockRepoConfiguration
 /// </summary>
 public class RepoSettings
 {
+	private string? _zipFileName;
+
 	/// <summary>
 	/// The unique name for this repository (e.g., "skyblockrepo", "neu").
 	/// </summary>
@@ -76,7 +78,28 @@ public class RepoSettings
 	public string ApiEndpoint { get; set; } = string.Empty;
 
 	/// <summary>
-	/// An optional local file path to use instead of downloading.
+	/// Controls whether the repository is stored as extracted files or as a zip archive on disk.
+	/// </summary>
+	public RepoStorageMode StorageMode { get; set; } = RepoStorageMode.ExtractedDirectory;
+
+	/// <summary>
+	/// The filename to use for zip-backed storage inside the repo folder. Defaults to &lt;Name&gt;.zip.
+	/// </summary>
+	public string ZipFileName
+	{
+		get => string.IsNullOrWhiteSpace(_zipFileName) ? GetDefaultZipFileName() : _zipFileName;
+		set => _zipFileName = value;
+	}
+
+	/// <summary>
+	/// An optional local folder path to use instead of downloading.
+	/// In zip mode, the loader reads the archive from this folder using <see cref="ZipFileName"/>.
 	/// </summary>
 	public string? LocalPath { get; set; }
+
+	private string GetDefaultZipFileName()
+	{
+		var name = string.IsNullOrWhiteSpace(Name) ? "repo" : Name.Trim();
+		return $"{name}.zip";
+	}
 }
