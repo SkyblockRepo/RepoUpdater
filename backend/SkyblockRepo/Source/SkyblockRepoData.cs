@@ -21,4 +21,59 @@ public class SkyblockRepoData
 	
 	// NEU Data
 	public ReadOnlyDictionary<string, NeuItemData> NeuItems { get; set; } = new(new Dictionary<string, NeuItemData>());
+
+	/// <summary>
+	/// Static bestiary reference data loaded from NEU constants and package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockBestiaryData Bestiary { get; internal set; } = new();
+
+	/// <summary>
+	/// Static accessory and magical power reference data loaded from NEU constants and package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockAccessoriesData Accessories { get; internal set; } = new();
+
+	/// <summary>
+	/// Static attribute shard reference data loaded from NEU constants.
+	/// </summary>
+	public SkyblockAttributeShardsData AttributeShards { get; internal set; } = new();
+
+	/// <summary>
+	/// Static Garden reference data loaded from NEU constants and package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockGardenData Garden { get; internal set; } = new();
+
+	/// <summary>
+	/// Static fishing reference data loaded from NEU constants and package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockFishingData Fishing { get; internal set; } = new();
+
+	/// <summary>
+	/// Static collection reference data loaded from the cached Hypixel collections resource plus package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockCollectionsData Collections { get; internal set; } = new();
+
+	/// <summary>
+	/// Static minion reference data loaded from NEU constants and package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockMinionsData Minions { get; internal set; } = new();
+
+	/// <summary>
+	/// Static pet progression and score reference data loaded from NEU constants and package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockPetCatalogData PetCatalog { get; internal set; } = new();
+
+	/// <summary>
+	/// Static Rift guide reference data loaded from NEU constants and package-owned supplemental metadata.
+	/// </summary>
+	public SkyblockRiftData Rift { get; internal set; } = new();
+
+	/// <summary>
+	/// Static essence shop reference data loaded from NEU constants.
+	/// </summary>
+	public SkyblockEssencePerksData EssencePerks { get; internal set; } = new();
+
+	/// <summary>
+	/// Curated static gear groupings for farming, fishing, and mining.
+	/// </summary>
+	public SkyblockGearData Gear { get; internal set; } = new();
 }

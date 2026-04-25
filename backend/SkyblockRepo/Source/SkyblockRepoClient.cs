@@ -8,6 +8,7 @@ public interface ISkyblockRepoClient
 	Task InitializeAsync(CancellationToken cancellationToken = default);
 	Task CheckForUpdatesAsync(CancellationToken cancellationToken = default);
 	Task ReloadRepoAsync(CancellationToken cancellationToken = default);
+	Task RefreshCollectionsAsync(CancellationToken cancellationToken = default);
 	SkyblockItemData? FindItem(string itemIdOrName);
 	SkyblockItemMatch? MatchItem(object sourceItem);
 }
@@ -60,6 +61,14 @@ public class SkyblockRepoClient : ISkyblockRepoClient
 	public async Task ReloadRepoAsync(CancellationToken cancellationToken = default)
 	{
 		await _updater.ReloadRepoAsync(cancellationToken);
+	}
+
+	/// <summary>
+	/// Forces a refresh of the cached Hypixel collections payload and reloads the in-memory metadata snapshot.
+	/// </summary>
+	public async Task RefreshCollectionsAsync(CancellationToken cancellationToken = default)
+	{
+		await _updater.RefreshCollectionsAsync(cancellationToken);
 	}
 
 	/// <summary>

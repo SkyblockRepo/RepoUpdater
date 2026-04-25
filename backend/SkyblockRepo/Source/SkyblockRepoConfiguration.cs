@@ -34,6 +34,11 @@ public class SkyblockRepoConfiguration
 		ZipPath = "/archive/refs/heads/master.zip",
 		ApiEndpoint = "https://api.github.com/repos/NotEnoughUpdates/NotEnoughUpdates-REPO/commits/master"
 	};
+
+	/// <summary>
+	/// Settings for the cached Hypixel SkyBlock collections resource.
+	/// </summary>
+	public HypixelCollectionsSettings Collections { get; set; } = new();
 	
 	/// <summary>
 	/// Configuration for how SkyblockRepo should check for variants from your item type.
@@ -48,6 +53,38 @@ public class SkyblockRepoConfiguration
 		get => _matcher;
 		set => _matcher = value ?? throw new ArgumentNullException(nameof(value));
 	}
+}
+
+/// <summary>
+/// Settings for the cached Hypixel SkyBlock collections resource.
+/// </summary>
+public class HypixelCollectionsSettings
+{
+	private string? _cacheFileName;
+
+	/// <summary>
+	/// The unique name used for the on-disk cache folder and metadata file.
+	/// </summary>
+	public string Name { get; set; } = "hypixel-collections";
+
+	/// <summary>
+	/// The Hypixel API endpoint that returns the SkyBlock collections payload.
+	/// </summary>
+	public string ApiEndpoint { get; set; } = "https://api.hypixel.net/v2/resources/skyblock/collections";
+
+	/// <summary>
+	/// The filename used for the cached JSON payload when storing the remote response locally.
+	/// </summary>
+	public string CacheFileName
+	{
+		get => string.IsNullOrWhiteSpace(_cacheFileName) ? "collections.json" : _cacheFileName;
+		set => _cacheFileName = value;
+	}
+
+	/// <summary>
+	/// Optional local override for the cached collections payload. This can point to either a JSON file or a folder containing <see cref="CacheFileName"/>.
+	/// </summary>
+	public string? LocalPath { get; set; }
 }
 
 /// <summary>

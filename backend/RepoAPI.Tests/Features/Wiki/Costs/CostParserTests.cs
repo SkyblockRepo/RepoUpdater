@@ -101,5 +101,6 @@ public class CostParserTests
 		public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 		public Task CheckForUpdatesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 		public Task ReloadRepoAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+		public Task RefreshCollectionsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 	}
 }

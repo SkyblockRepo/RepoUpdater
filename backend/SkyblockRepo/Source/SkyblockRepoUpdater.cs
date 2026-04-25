@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SkyblockRepo.Models;
 using SkyblockRepo.Models.Misc;
 using SkyblockRepo.Models.Neu;
+using SkyblockRepo.StaticData;
 
 namespace SkyblockRepo;
 
@@ -14,6 +15,7 @@ public interface ISkyblockRepoUpdater
 	Task InitializeAsync(CancellationToken cancellationToken = default);
 	Task CheckForUpdatesAsync(CancellationToken cancellationToken = default);
 	Task ReloadRepoAsync(CancellationToken cancellationToken = default);
+	Task RefreshCollectionsAsync(CancellationToken cancellationToken = default);
 }
 
 public class SkyblockRepoUpdater : ISkyblockRepoUpdater
@@ -24,12 +26,27 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
     private readonly ILogger<SkyblockRepoUpdater> _logger;
     private readonly RepoRuntime _skyblockRepo;
     private readonly RepoRuntime? _neuRepo; // Nullable for when UseNeuRepo is false
+    private readonly HypixelCollectionsUpdater? _collectionsUpdater;
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
 	    PropertyNameCaseInsensitive = true,
 	    PropertyNamingPolicy = JsonNamingPolicy.CamelCase, 
 	    Converters = { new NeuDropConverter() }
     };
+    private readonly IRepoSectionParser[] _sectionParsers =
+    [
+	    new BestiarySectionParser(),
+	    new AccessoriesSectionParser(),
+	    new AttributeShardsSectionParser(),
+	    new GardenSectionParser(),
+	    new FishingSectionParser(),
+	    new CollectionsSectionParser(),
+	    new MinionsSectionParser(),
+	    new PetCatalogSectionParser(),
+	    new RiftSectionParser(),
+	    new EssencePerksSectionParser(),
+	    new GearSectionParser(),
+    ];
     
     public SkyblockRepoUpdater(
         SkyblockRepoConfiguration configuration,
@@ -43,6 +60,7 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
         if (configuration.UseNeuRepo)
         {
             _neuRepo = CreateUpdater(configuration.NeuRepo, configuration.FileStoragePath, httpClientFactory, repoUpdaterLogger, nameof(configuration.NeuRepo));
+            _collectionsUpdater = CreateCollectionsUpdater(configuration.Collections, configuration.FileStoragePath, httpClientFactory);
         }
     }
 	
@@ -59,7 +77,26 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
         if (configuration.UseNeuRepo)
         {
             _neuRepo = CreateUpdater(configuration.NeuRepo, configuration.FileStoragePath, client, repoUpdaterLogger, nameof(configuration.NeuRepo));
+            _collectionsUpdater = CreateCollectionsUpdater(configuration.Collections, configuration.FileStoragePath, client);
         }
+    }
+
+    private static HypixelCollectionsUpdater CreateCollectionsUpdater(
+	    HypixelCollectionsSettings settings,
+	    string storagePath,
+	    IHttpClientFactory factory)
+    {
+	    ValidateCollectionsSettings(settings);
+	    return new HypixelCollectionsUpdater(settings, storagePath, factory);
+    }
+
+    private static HypixelCollectionsUpdater CreateCollectionsUpdater(
+	    HypixelCollectionsSettings settings,
+	    string storagePath,
+	    HttpClient client)
+    {
+	    ValidateCollectionsSettings(settings);
+	    return new HypixelCollectionsUpdater(settings, storagePath, client);
     }
 
     private static RepoRuntime CreateUpdater(
@@ -166,6 +203,26 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 		    $"If you only want to change one option such as StorageMode, mutate the existing settings object instead of replacing it. " +
 		    $"Example: config.{settingsName}.StorageMode = RepoStorageMode.ZipArchive;");
     }
+
+    private static void ValidateCollectionsSettings(HypixelCollectionsSettings settings)
+    {
+	    ArgumentNullException.ThrowIfNull(settings);
+
+	    if (settings.LocalPath is not null)
+	    {
+		    return;
+	    }
+
+	    if (!string.IsNullOrWhiteSpace(settings.ApiEndpoint))
+	    {
+		    return;
+	    }
+
+	    throw new InvalidOperationException(
+		    "Collections is missing the required ApiEndpoint. " +
+		    "If you only want to override a single option, mutate the existing settings object instead of replacing it. " +
+		    "Example: config.Collections.LocalPath = \"C:\\\\collections.json\";");
+    }
     
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -182,13 +239,28 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
         {
             _logger.LogInformation("Repository data found locally. Skipping update check on startup.");
         }
+
+        if (_collectionsUpdater is not null && !_collectionsUpdater.DataExists())
+        {
+	        _logger.LogInformation("Hypixel collections cache not found locally. Downloading...");
+	        await _collectionsUpdater.ForceDownloadAsync(cancellationToken);
+        }
         
         await ReloadRepoAsync(cancellationToken);
     }
 
     public async Task CheckForUpdatesAsync(CancellationToken cancellationToken = default)
     {
-        var results = await Task.WhenAll(GetRepos().Select(repo => CheckForUpdatesOrRecoverAsync(repo, cancellationToken)));
+        var updateTasks = GetRepos()
+	        .Select(repo => CheckForUpdatesOrRecoverAsync(repo, cancellationToken))
+	        .ToList();
+
+        if (_collectionsUpdater is not null)
+        {
+	        updateTasks.Add(_collectionsUpdater.CheckForUpdatesAsync(cancellationToken));
+        }
+
+        var results = await Task.WhenAll(updateTasks);
 
         // If any of the repos were updated, trigger a single reload of all data.
         if (results.Any(wasUpdated => wasUpdated))
@@ -196,6 +268,30 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
             _logger.LogInformation("One or more repositories were updated. Reloading all data...");
             await ReloadRepoAsync(cancellationToken);
         }
+    }
+
+    public async Task RefreshCollectionsAsync(CancellationToken cancellationToken = default)
+    {
+	    if (_collectionsUpdater is null)
+	    {
+		    return;
+	    }
+
+	    if (_collectionsUpdater.IsLocal)
+	    {
+		    if (_collectionsUpdater.DataExists())
+		    {
+			    await ReloadRepoAsync(cancellationToken);
+		    }
+
+		    return;
+	    }
+
+	    var refreshed = await _collectionsUpdater.ForceDownloadAsync(cancellationToken);
+	    if (refreshed || _collectionsUpdater.DataExists())
+	    {
+		    await ReloadRepoAsync(cancellationToken);
+	    }
     }
 
     public async Task ReloadRepoAsync(CancellationToken cancellationToken)
@@ -208,59 +304,97 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
         }
 
         var primaryStopwatch = Stopwatch.StartNew();
-        await using (var mainSnapshot = await RepoSnapshot.OpenAsync(
-	                     _skyblockRepo.Updater.RepoPath,
-	                     _skyblockRepo.StorageMode,
-	                     _skyblockRepo.ZipFileName,
-	                     cancellationToken))
-        {
-	        if (!await LoadManifest(mainSnapshot, cancellationToken))
-	        {
-		        return;
-	        }
+        var builder = new SkyblockRepoDataBuilder();
 
-	        await Task.WhenAll(
-		        LoadSkyblockItems(mainSnapshot, cancellationToken),
-		        LoadSkyblockPets(mainSnapshot, cancellationToken),
-		        LoadMiscData(mainSnapshot, cancellationToken),
-		        LoadSkyblockEnchantments(mainSnapshot, cancellationToken),
-		        LoadSkyblockNpcs(mainSnapshot, cancellationToken),
-		        LoadSkyblockShops(mainSnapshot, cancellationToken),
-		        LoadSkyblockZones(mainSnapshot, cancellationToken)
-	        );
+        await using var mainSnapshot = await RepoSnapshot.OpenAsync(
+	        _skyblockRepo.Updater.RepoPath,
+	        _skyblockRepo.StorageMode,
+	        _skyblockRepo.ZipFileName,
+	        cancellationToken);
+
+        var manifest = await LoadManifest(mainSnapshot, cancellationToken);
+        if (manifest is null)
+        {
+	        return;
         }
+
+        builder.Data.Manifest = manifest;
+
+        await Task.WhenAll(
+	        LoadSkyblockItems(builder.Data, mainSnapshot, cancellationToken),
+	        LoadSkyblockPets(builder.Data, mainSnapshot, cancellationToken),
+	        LoadMiscData(builder.Data, mainSnapshot, cancellationToken),
+	        LoadSkyblockEnchantments(builder.Data, mainSnapshot, cancellationToken),
+	        LoadSkyblockNpcs(builder.Data, mainSnapshot, cancellationToken),
+	        LoadSkyblockShops(builder.Data, mainSnapshot, cancellationToken),
+	        LoadSkyblockZones(builder.Data, mainSnapshot, cancellationToken)
+        );
+
         primaryStopwatch.Stop();
         _logger.LogInformation("Loaded primary SkyblockRepo in {ElapsedMs} ms.", primaryStopwatch.ElapsedMilliseconds);
-        
+
+        IRepoSnapshot? neuSnapshot = null;
+        HypixelCollectionsApiResponse? collectionsResponse = null;
         if (_neuRepo is not null)
         {
-            _logger.LogInformation("Loading data from NEU repo...");
-            if (!RepoDataExists(_neuRepo))
-            {
-	            _logger.LogWarning("NEU data source not found: {SourcePath}", GetSourcePath(_neuRepo));
-	            return;
-            }
+	        _logger.LogInformation("Loading data from NEU repo...");
+	        if (!RepoDataExists(_neuRepo))
+	        {
+		        _logger.LogWarning("NEU data source not found: {SourcePath}", GetSourcePath(_neuRepo));
+	        }
+	        else
+	        {
+		        var neuStopwatch = Stopwatch.StartNew();
+		        neuSnapshot = await RepoSnapshot.OpenAsync(
+			        _neuRepo.Updater.RepoPath,
+			        _neuRepo.StorageMode,
+			        _neuRepo.ZipFileName,
+			        cancellationToken);
 
-            var neuStopwatch = Stopwatch.StartNew();
-            await using var neuSnapshot = await RepoSnapshot.OpenAsync(
-	            _neuRepo.Updater.RepoPath,
-	            _neuRepo.StorageMode,
-	            _neuRepo.ZipFileName,
-	            cancellationToken);
+		        builder.Data.NeuItems = await LoadNeuItems(builder.Data, neuSnapshot, cancellationToken);
+		        neuStopwatch.Stop();
+		        _logger.LogInformation("Loaded NEU repo in {ElapsedMs} ms.", neuStopwatch.ElapsedMilliseconds);
+	        }
+        }
 
-            await LoadNeuItems(neuSnapshot, cancellationToken);
-            neuStopwatch.Stop();
-            _logger.LogInformation("Loaded NEU repo in {ElapsedMs} ms.", neuStopwatch.ElapsedMilliseconds);
+        if (_collectionsUpdater is not null && _collectionsUpdater.DataExists())
+        {
+	        collectionsResponse = await _collectionsUpdater.LoadAsync(cancellationToken);
+        }
+
+        try
+        {
+	        var context = new RepoSectionLoadContext(
+		        mainSnapshot,
+		        neuSnapshot,
+		        collectionsResponse,
+		        builder,
+		        _jsonSerializerOptions,
+		        _logger);
+
+	        foreach (var parser in _sectionParsers.OrderBy(parser => parser.Stage))
+	        {
+		        await parser.ApplyAsync(context, cancellationToken);
+	        }
+
+	        Data = builder.Build();
+        }
+        finally
+        {
+	        if (neuSnapshot is not null)
+	        {
+		        await neuSnapshot.DisposeAsync();
+	        }
         }
     }
 
-	private async Task<bool> LoadManifest(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task<Manifest?> LoadManifest(IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
 		const string manifestPath = "manifest.json";
 		if (!snapshot.FileExists(manifestPath))
 		{
 			_logger.LogCritical("Invalid repo source {RepoPath}! No manifest.json found!", snapshot.SourcePath);
-			return false;
+			return null;
 		}
 
 		try
@@ -269,23 +403,23 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 			if (stream is null)
 			{
 				_logger.LogCritical("Unable to open manifest.json from {RepoPath}", snapshot.SourcePath);
-				return false;
+				return null;
 			}
 
-			Manifest = await JsonSerializer.DeserializeAsync<Manifest>(stream, _jsonSerializerOptions, cancellationToken);
+			var manifest = await JsonSerializer.DeserializeAsync<Manifest>(stream, _jsonSerializerOptions, cancellationToken);
 			_logger.LogInformation("Manifest file loaded successfully!");
-			return Manifest is not null;
+			return manifest;
 		}
 		catch (Exception e)
 		{
 			_logger.LogError(e, "Error loading manifest!");
-			return false;
+			return null;
 		}
 	}
 
-	private async Task LoadSkyblockItems(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task LoadSkyblockItems(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
-		var itemsFolderPath = Manifest?.Paths.Items ?? "items";
+		var itemsFolderPath = data.Manifest?.Paths.Items ?? "items";
 
 		var items = await LoadDataAsync<SkyblockItemData>(snapshot, itemsFolderPath, ItemKeySelector, cancellationToken);
 		var nameSearch = items.ToDictionary(kvp => kvp.Key, kvp => new SkyblockItemNameSearch
@@ -294,8 +428,8 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 			Name = kvp.Value.Name,
 		});
 
-		Data.Items = items;
-		Data.ItemNameSearch = new ReadOnlyDictionary<string, SkyblockItemNameSearch>(nameSearch);
+		data.Items = items;
+		data.ItemNameSearch = new ReadOnlyDictionary<string, SkyblockItemNameSearch>(nameSearch);
 
 		return;
 
@@ -303,27 +437,27 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 		string ItemKeySelector(string fileName) => fileName.Replace("-", ":");
 	}
 
-	private async Task LoadSkyblockPets(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task LoadSkyblockPets(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
-		var folderPath = Manifest?.Paths.Pets ?? "pets";
-		Data.Pets = await LoadDataAsync<SkyblockPetData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
+		var folderPath = data.Manifest?.Paths.Pets ?? "pets";
+		data.Pets = await LoadDataAsync<SkyblockPetData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
 	}
 	
-	private async Task LoadMiscData(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task LoadMiscData(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
 		// Load Taylor Collections
-		var folderPath = Manifest?.Paths.Misc ?? "misc";
+		var folderPath = data.Manifest?.Paths.Misc ?? "misc";
 		
 		var taylorCollections = await LoadFileAsync<TaylorCollection>(snapshot, Path.Combine(folderPath, "taylors_collection.json"), cancellationToken);
-		Data.TaylorCollection = taylorCollections ?? new TaylorCollection();
+		data.TaylorCollection = taylorCollections ?? new TaylorCollection();
 
 		var seasonalBundles = await LoadFileAsync<TaylorCollection>(snapshot, Path.Combine(folderPath, "seasonal_bundles.json"), cancellationToken);
-		Data.SeasonalBundles = seasonalBundles ?? new TaylorCollection();
+		data.SeasonalBundles = seasonalBundles ?? new TaylorCollection();
 	}
 
 	private static string DefaultKeySelector(string file) => file;
 	
-	private async Task LoadNeuItems(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task<ReadOnlyDictionary<string, NeuItemData>> LoadNeuItems(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
 		const string folderPath = "items";
 		var neuItems = await LoadDataAsync<NeuItemData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
@@ -334,7 +468,7 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 		{
 			if (item.ItemId != "minecraft:skull") continue;
 			
-			var sbRepoItem = Data.Items.GetValueOrDefault(id);
+			var sbRepoItem = data.Items.GetValueOrDefault(id);
 			if (sbRepoItem is null || sbRepoItem.Data?.Skin is not null) continue;
 			
 			var extractedSkin = SkyblockRepoRegexUtils.ExtractSkullTexture(item.NbtTag);
@@ -349,31 +483,31 @@ public class SkyblockRepoUpdater : ISkyblockRepoUpdater
 			};
 		}
 		
-		Data.NeuItems = neuItems;
+		return neuItems;
 	}
 	
-	private async Task LoadSkyblockEnchantments(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task LoadSkyblockEnchantments(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
 		const string folderPath = "enchantments";
-		Data.Enchantments = await LoadDataAsync<SkyblockEnchantmentData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
+		data.Enchantments = await LoadDataAsync<SkyblockEnchantmentData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
 	}
 
-	private async Task LoadSkyblockNpcs(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task LoadSkyblockNpcs(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
 		const string folderPath = "npcs";
-		Data.Npcs = await LoadDataAsync<SkyblockNpcData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
+		data.Npcs = await LoadDataAsync<SkyblockNpcData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
 	}
 
-	private async Task LoadSkyblockShops(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task LoadSkyblockShops(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
 		const string folderPath = "shops";
-		Data.Shops = await LoadDataAsync<SkyblockShopData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
+		data.Shops = await LoadDataAsync<SkyblockShopData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
 	}
 
-	private async Task LoadSkyblockZones(IRepoSnapshot snapshot, CancellationToken cancellationToken)
+	private async Task LoadSkyblockZones(SkyblockRepoData data, IRepoSnapshot snapshot, CancellationToken cancellationToken)
 	{
 		const string folderPath = "zones";
-		Data.Zones = await LoadDataAsync<SkyblockZoneData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
+		data.Zones = await LoadDataAsync<SkyblockZoneData>(snapshot, folderPath, DefaultKeySelector, cancellationToken);
 	}
 	
 	/// <summary>

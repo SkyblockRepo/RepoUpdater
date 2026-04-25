@@ -134,7 +134,7 @@ public class MatcherTests
 	private sealed class SampleItemMatcher : SkyblockRepoMatcher<SampleItem>
 	{
 		protected override string? GetAttributeString(SampleItem item, string attribute) =>
-			item.Attributes.TryGetValue(attribute, out var value) ? value : null;
+			item.Attributes.GetValueOrDefault(attribute);
 
 		protected override string? GetSkyblockId(SampleItem item) => item.Id;
 
@@ -146,5 +146,6 @@ public class MatcherTests
 		public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 		public Task CheckForUpdatesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 		public Task ReloadRepoAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+		public Task RefreshCollectionsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 	}
 }
