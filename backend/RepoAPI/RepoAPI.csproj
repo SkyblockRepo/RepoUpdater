@@ -12,7 +12,7 @@
 
     <ItemGroup>
         <PackageReference Include="DiffPlex" Version="1.9.0" />
-        <PackageReference Include="EliteFarmers.HypixelAPI" Version="1.1.3" />
+        <PackageReference Include="EliteFarmers.HypixelAPI" Version="1.1.4" />
         <PackageReference Include="FastEndpoints" Version="8.1.0" />
         <PackageReference Include="FastEndpoints.ClientGen.Kiota" Version="8.1.0" />
         <PackageReference Include="FastEndpoints.Generator" Version="8.1.0">
